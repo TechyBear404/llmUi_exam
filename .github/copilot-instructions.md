@@ -1,0 +1,3 @@
+-   always use tailwind for css classes
+-   use <AppLayout></AppLayout> to wrap pages
+-   use fontawesome library with this model: <font-awesome-icon icon="fa-solid fa-house" />
