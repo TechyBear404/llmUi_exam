@@ -6,12 +6,29 @@ use App\Events\ChatMessageStreamed;
 use App\Models\Conversation;
 use App\Services\ChatService;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class AskController extends Controller
 {
+    public function index()
+    {
+        $models = (new ChatService())->getModels();
+        $selectedModel = ChatService::DEFAULT_MODEL;
+        $conversations = auth()->user()->conversations()
+            ->with('messages')
+            ->latest()
+            ->get();
+
+        return Inertia::render('Main/Index', [
+            'models' => $models,
+            'selectedModel' => $selectedModel,
+            'conversations' => $conversations,
+        ]);
+    }
+
     public function streamMessage(Conversation $conversation, Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'message' => 'required|string',
             'model'   => 'nullable|string',
         ]);
@@ -19,7 +36,7 @@ class AskController extends Controller
         try {
             // 1. Sauvegarder le message de l'utilisateur
             $conversation->messages()->create([
-                'content' => $request->input('message'),
+                'content' => $validated['message'],
                 'role'    => 'user',
             ]);
 
@@ -66,7 +83,7 @@ class AskController extends Controller
                     if ($currentTime - $lastBroadcastTime >= 100) {
                         broadcast(new ChatMessageStreamed(
                             channel: $channelName,
-                            content: $buffer,
+                            content: $fullResponse, // Changed to send full response instead of buffer
                             isComplete: false
                         ));
 
@@ -80,7 +97,7 @@ class AskController extends Controller
             if (!empty($buffer)) {
                 broadcast(new ChatMessageStreamed(
                     channel: $channelName,
-                    content: $buffer,
+                    content: $fullResponse, // Changed to send full response
                     isComplete: false
                 ));
             }
@@ -97,13 +114,13 @@ class AskController extends Controller
                 isComplete: true
             ));
 
-            return response()->json("ok");
+            return response()->json(['status' => 'success']);
         } catch (\Exception $e) {
             // Diffuser l’erreur
-            if (isset($conversation)) {
+            if (isset($channelName)) {
                 broadcast(new ChatMessageStreamed(
-                    channel: "chat.{$conversation->id}",
-                    content: "Erreur: " . $e->getMessage(),
+                    channel: $channelName,
+                    content: "Error: " . $e->getMessage(),
                     isComplete: true,
                     error: true
                 ));

@@ -28,7 +28,9 @@
         "@fortawesome/vue-fontawesome": "^3.0.8",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "highlight.js": "^11.11.1",
         "lucide-vue-next": "^0.475.0",
+        "markdown-it": "^14.1.0",
         "radix-vue": "^1.9.13",
         "tailwind-merge": "^3.0.1",
         "tailwindcss-animate": "^1.0.7"

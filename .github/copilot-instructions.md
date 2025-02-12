@@ -1,4 +1,4 @@
-Laravel / inertia / vue3 project
+chatgpt like UI for llms with Laravel / inertia / vue3 project
 
 -   always use tailwind for css classes
 -   use <AppLayout></AppLayout> to wrap pages

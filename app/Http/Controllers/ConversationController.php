@@ -3,63 +3,46 @@
 namespace App\Http\Controllers;
 
 use App\Models\Conversation;
+use App\Services\ChatService;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class ConversationController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
+    public function __construct(
+        private ChatService $chatService
+    ) {}
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'model_id' => 'required|string',
+        ]);
+
+        $conversation = Conversation::Create([
+            'model_id' => $validated['model_id'],
+            'user_id' => auth()->id(),
+        ]);
+
+        return redirect()->route('conversations.show', $conversation);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Conversation $conversation)
     {
-        //
+        abort_if($conversation->user_id !== auth()->id(), 403);
+
+        return Inertia::render('Main/Index', [
+            'currentConversation' => $conversation->load('messages'),
+            'conversations' => auth()->user()->conversations()->latest()->get(),
+            'models' => $this->chatService->getModels(),
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Conversation $conversation)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Conversation $conversation)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(Conversation $conversation)
     {
-        //
+        abort_if($conversation->user_id !== auth()->id(), 403);
+
+        $conversation->delete();
+        return redirect()->route('ask.index');
     }
 }
