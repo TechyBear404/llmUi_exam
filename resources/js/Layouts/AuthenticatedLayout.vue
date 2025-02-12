@@ -11,8 +11,8 @@ const showingNavigationDropdown = ref(false);
 </script>
 
 <template>
-    <div class="min-h-screen flex flex-col">
-        <nav class="bg-white border-b border-gray-100">
+    <div class="min-h-screen flex flex-col bg-background">
+        <nav class="border-b border-border bg-card">
             <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex">
@@ -20,7 +20,7 @@ const showingNavigationDropdown = ref(false);
                         <div class="flex items-center shrink-0">
                             <Link :href="route('ask.index')">
                                 <ApplicationLogo
-                                    class="block w-auto text-gray-800 fill-current h-9"
+                                    class="block w-auto fill-current h-9 text-foreground"
                                 />
                             </Link>
                         </div>
@@ -46,7 +46,7 @@ const showingNavigationDropdown = ref(false);
                                     <span class="inline-flex rounded-md">
                                         <button
                                             type="button"
-                                            class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none"
+                                            class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 transition duration-150 ease-in-out bg-card border border-border rounded-md text-foreground hover:bg-muted focus:outline-none"
                                         >
                                             {{ $page.props.auth.user.name }}
 
@@ -67,9 +67,7 @@ const showingNavigationDropdown = ref(false);
                                 </template>
 
                                 <template #content>
-                                    <DropdownLink
-                                        :href="route('profile.edit')"
-                                    >
+                                    <DropdownLink :href="route('profile.edit')">
                                         Profile
                                     </DropdownLink>
                                     <DropdownLink
@@ -91,7 +89,7 @@ const showingNavigationDropdown = ref(false);
                                 showingNavigationDropdown =
                                     !showingNavigationDropdown
                             "
-                            class="inline-flex items-center justify-center p-2 text-gray-400 transition duration-150 ease-in-out rounded-md hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none"
+                            class="inline-flex items-center justify-center p-2 transition duration-150 ease-in-out rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground focus:outline-none"
                         >
                             <svg
                                 class="w-6 h-6"
@@ -145,12 +143,12 @@ const showingNavigationDropdown = ref(false);
                 </div>
 
                 <!-- Responsive Settings Options -->
-                <div class="pt-4 pb-1 border-t border-gray-200">
+                <div class="pt-4 pb-1 border-t border-border">
                     <div class="px-4">
-                        <div class="text-base font-medium text-gray-800">
+                        <div class="text-base font-medium text-foreground">
                             {{ $page.props.auth.user.name }}
                         </div>
-                        <div class="text-sm font-medium text-gray-500">
+                        <div class="text-sm font-medium text-muted-foreground">
                             {{ $page.props.auth.user.email }}
                         </div>
                     </div>
@@ -172,14 +170,14 @@ const showingNavigationDropdown = ref(false);
         </nav>
 
         <!-- Page Heading -->
-        <header class="bg-white shadow" v-if="$slots.header">
+        <header class="bg-card shadow" v-if="$slots.header">
             <div class="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <slot name="header" />
             </div>
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 flex">
+        <main class="flex-1 flex min-h-0">
             <slot />
         </main>
     </div>

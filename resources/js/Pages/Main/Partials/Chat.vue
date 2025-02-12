@@ -1,116 +1,186 @@
 <template>
     <div class="flex flex-col h-full">
-        <!-- Error Alert -->
-        <div
-            v-if="error"
-            class="p-4 m-4 text-red-500 border border-red-500 rounded-lg bg-red-500/10"
-        >
-            <div class="flex items-center gap-2">
-                <font-awesome-icon icon="fa-solid fa-circle-exclamation" />
-                <span>{{ error }}</span>
-            </div>
-            <button
-                @click="error = ''"
-                class="mt-1 text-xs text-red-400 hover:text-red-300"
-            >
-                Dismiss
-            </button>
-        </div>
+        <AlertDialog :open="!!error">
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Error</AlertDialogTitle>
+                    <AlertDialogDescription>{{ error }}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <Button variant="outline" @click="error = null"
+                        >Dismiss</Button
+                    >
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
 
-        <!-- Messages Area -->
-        <div
-            class="flex-1 p-4 space-y-4 overflow-y-auto"
-            ref="messagesContainer"
-        >
-            <div
-                v-for="message in localMessages"
-                :key="message.id"
-                class="flex"
-                :class="
-                    message.role === 'assistant'
-                        ? 'justify-start'
-                        : 'justify-end'
-                "
-            >
-                <div
-                    class="max-w-[80%] rounded-lg p-3"
-                    :class="
-                        message.role === 'assistant'
-                            ? 'bg-gray-700 text-white'
-                            : 'bg-blue-600 text-white'
-                    "
-                >
-                    <template v-if="message.isLoading">
-                        <div class="flex items-center gap-2">
-                            <font-awesome-icon
-                                icon="fa-solid fa-circle-notch"
-                                class="animate-spin"
-                            />
-                            <span>AI is thinking...</span>
-                        </div>
-                    </template>
-                    <template v-else>
+        <ScrollArea class="flex-1 min-h-0" ref="scrollArea">
+            <div class="px-4">
+                <div class="py-4 space-y-4" ref="messagesContainer">
+                    <div
+                        v-for="message in localMessages"
+                        :key="message.id"
+                        class="flex items-start"
+                        :class="
+                            message.role === 'assistant'
+                                ? 'justify-start'
+                                : 'justify-end'
+                        "
+                    >
                         <div
                             v-if="message.role === 'assistant'"
-                            class="prose prose-invert prose-pre:bg-gray-800 prose-pre:border prose-pre:border-gray-600 max-w-none"
-                            v-html="renderMarkdown(message.content)"
-                        />
-                        <div v-else>
-                            {{ message.content }}
+                            class="flex items-center justify-center p-2 mt-2 mr-2 rounded-full bg-primary aspect-square"
+                        >
+                            <font-awesome-icon
+                                icon="fa-solid fa-robot"
+                                class=""
+                            />
                         </div>
-                    </template>
+                        <Card
+                            :class="[
+                                'max-w-[80%]',
+                                message.role === 'assistant'
+                                    ? 'bg-muted'
+                                    : 'bg-primary',
+                            ]"
+                        >
+                            <CardContent class="relative p-4">
+                                <div
+                                    v-if="message.isLoading"
+                                    class="flex items-center gap-2"
+                                >
+                                    <font-awesome-icon
+                                        icon="fa-solid fa-circle-notch"
+                                        class="w-4 h-4 animate-spin"
+                                    />
+                                    <span>AI is thinking...</span>
+                                </div>
+                                <template v-else>
+                                    <div
+                                        v-if="message.role === 'assistant'"
+                                        class="prose prose-invert prose-pre:bg-background prose-pre:border prose-pre:border-border max-w-none"
+                                    >
+                                        <span
+                                            v-html="
+                                                renderMarkdown(message.content)
+                                            "
+                                        ></span>
+                                    </div>
+                                    <div v-else class="text-primary-foreground">
+                                        {{ message.content }}
+                                    </div>
+                                </template>
+                                <div
+                                    class="flex items-center justify-between gap-4"
+                                    :class="
+                                        message.role === 'assistant'
+                                            ? 'text-gray-400'
+                                            : 'text-purple-200'
+                                    "
+                                >
+                                    <div class="text-xs">
+                                        {{ formatDateTime(message.updated_at) }}
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div
+                                            v-if="copiedStates.get(message.id)"
+                                            class="text-xs"
+                                        >
+                                            Copié
+                                        </div>
+                                        <div
+                                            class="cursor-pointer"
+                                            @click="
+                                                handleCopy(
+                                                    message.content,
+                                                    message.id
+                                                )
+                                            "
+                                        >
+                                            <font-awesome-icon
+                                                :icon="
+                                                    copiedStates.get(message.id)
+                                                        ? 'fa-solid fa-clipboard-check'
+                                                        : 'fa-solid fa-clipboard'
+                                                "
+                                                class="w-4 h-4"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <div
+                            v-if="message.role === 'user'"
+                            class="flex items-center justify-center p-2 mt-2 ml-2 border rounded-full bg-muted aspect-square"
+                        >
+                            <font-awesome-icon
+                                icon="fa-solid fa-user"
+                                class=""
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </ScrollArea>
 
-        <!-- Input Area -->
-        <div class="p-4 border-t border-gray-700">
+        <Button
+            v-show="showScrollButton"
+            @click="scrollToBottom"
+            size="icon"
+            variant="outline"
+            class="fixed z-20 rounded-full shadow-md bottom-24 right-6"
+        >
+            <font-awesome-icon icon="fa-solid fa-arrow-down" class="w-4 h-4" />
+        </Button>
+
+        <div
+            class="shrink-0 p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 relative z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.1)]"
+        >
             <form @submit.prevent="sendMessage" class="flex space-x-2">
-                <input
+                <Input
                     v-model="newMessage"
                     type="text"
-                    class="flex-1 px-4 py-2 text-white bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    class="flex-1"
                     placeholder="Type your message..."
                     :disabled="streaming"
                 />
-                <button
+                <Button
                     type="submit"
-                    class="px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
                     :disabled="!newMessage.trim() || streaming"
                 >
                     <font-awesome-icon
                         v-if="!streaming"
                         icon="fa-solid fa-paper-plane"
+                        class="w-4 h-4"
                     />
                     <font-awesome-icon
                         v-else
                         icon="fa-solid fa-spinner"
-                        class="animate-spin"
+                        class="w-4 h-4 animate-spin"
                     />
-                </button>
+                </Button>
             </form>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from "vue";
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
 import axios from "axios";
-import MarkdownIt from "markdown-it";
-import hljs from "highlight.js";
-import "highlight.js/styles/github-dark.css";
-
-const md = new MarkdownIt({
-    html: true,
-    highlight: function (str, lang) {
-        if (lang && hljs.getLanguage(lang)) {
-            try {
-                return hljs.highlight(str, { language: lang }).value;
-            } catch (__) {}
-        }
-        return ""; // use external default escaping
-    },
-});
+import { renderMarkdown, copyToClipboard, formatDateTime } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const props = defineProps({
     conversation: {
@@ -126,21 +196,74 @@ const props = defineProps({
 const newMessage = ref("");
 const streaming = ref(false);
 const streamedContent = ref("");
+const scrollArea = ref(null);
 const messagesContainer = ref(null);
-const error = ref("");
+const error = ref(null);
 const localMessages = ref([...props.conversation.messages]);
 const channelSubscription = ref(null);
+const showScrollButton = ref(false);
+const isNearBottom = ref(true);
+const copiedStates = ref(new Map());
 
 const scrollToBottom = () => {
-    if (messagesContainer.value) {
-        setTimeout(() => {
-            messagesContainer.value.scrollTop =
-                messagesContainer.value.scrollHeight;
-        }, 50);
+    if (scrollArea.value) {
+        const viewport = scrollArea.value.$el.querySelector(
+            "[data-radix-scroll-area-viewport]"
+        );
+        if (viewport) {
+            viewport.scrollTo({
+                top: viewport.scrollHeight,
+                behavior: "smooth",
+            });
+        }
     }
 };
 
-watch(() => props.conversation.messages, scrollToBottom, { deep: true });
+// Reset the scroll-to-bottom button state when landing at the bottom
+const handleScroll = () => {
+    const viewport = scrollArea.value.$el.querySelector(
+        "[data-radix-scroll-area-viewport]"
+    );
+    if (viewport) {
+        const scrollBottom =
+            viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+        isNearBottom.value = scrollBottom < 100;
+        showScrollButton.value = !isNearBottom.value;
+    }
+};
+
+watch(
+    () => props.conversation.messages,
+    () => {
+        if (isNearBottom.value) {
+            scrollToBottom();
+        }
+    },
+    { deep: true }
+);
+
+watch(
+    () => props.conversation,
+    () => {
+        error.value = null;
+        scrollToBottom();
+        isNearBottom.value = true;
+        showScrollButton.value = false;
+    },
+    { deep: true }
+);
+
+const handleCopy = async (text, messageId) => {
+    const success = await copyToClipboard(text);
+    if (success) {
+        copiedStates.value.set(messageId, true);
+        setTimeout(() => {
+            copiedStates.value.delete(messageId);
+        }, 2000);
+    } else {
+        alert("Unable to copy text to clipboard");
+    }
+};
 
 const sendMessage = async () => {
     if (!newMessage.value.trim() || streaming.value) return;
@@ -148,7 +271,7 @@ const sendMessage = async () => {
     const messageContent = newMessage.value;
     newMessage.value = "";
     streaming.value = true;
-    error.value = "";
+    error.value = null;
 
     // Add user message immediately to local messages
     localMessages.value.push({
@@ -166,6 +289,7 @@ const sendMessage = async () => {
         isLoading: true,
     });
 
+    await nextTick();
     scrollToBottom();
 
     try {
@@ -183,6 +307,7 @@ const sendMessage = async () => {
         localMessages.value = localMessages.value.filter(
             (msg) => msg.id !== assistantMessageId
         );
+        await nextTick();
         scrollToBottom();
     }
 };
@@ -199,17 +324,9 @@ const setupChannelSubscription = () => {
             console.error("❌ Erreur de connexion au canal:", error);
         })
         .listen(".message.streamed", (event) => {
-            // Updated to use short name since we defined the namespace
             console.log("📨 Message reçu:", event);
 
-            const lastMessage =
-                localMessages.value[localMessages.value.length - 1];
-
-            if (!lastMessage || lastMessage.role !== "assistant") {
-                console.log("⚠️ No assistant message to update");
-                return;
-            }
-
+            // Only set error if it comes from an event with an error property
             if (event.error) {
                 console.error("❌ Error received:", event.error);
                 error.value = event.error;
@@ -217,6 +334,14 @@ const setupChannelSubscription = () => {
                 localMessages.value = localMessages.value.filter(
                     (msg) => !msg.isLoading
                 );
+                return;
+            }
+
+            const lastMessage =
+                localMessages.value[localMessages.value.length - 1];
+
+            if (!lastMessage || lastMessage.role !== "assistant") {
+                console.log("⚠️ No assistant message to update");
                 return;
             }
 
@@ -235,19 +360,69 @@ const setupChannelSubscription = () => {
         });
 };
 
-const renderMarkdown = (content) => {
-    return md.render(content || "");
-};
+// Reset error when conversation changes
+watch(
+    () => props.conversation,
+    () => {
+        error.value = null;
+    },
+    { deep: true }
+);
 
-onMounted(() => {
+watch(
+    () => localMessages.value,
+    async () => {
+        if (isNearBottom.value) {
+            await nextTick();
+            scrollToBottom();
+        }
+    },
+    { deep: true }
+);
+
+watch(
+    () => props.conversation,
+    async (newConv) => {
+        error.value = null;
+        localMessages.value = [...newConv.messages];
+        await nextTick();
+        scrollToBottom();
+        isNearBottom.value = true;
+        showScrollButton.value = false;
+    },
+    { immediate: true, deep: true }
+);
+
+onMounted(async () => {
     setupChannelSubscription();
-    scrollToBottom();
+    await nextTick();
+
+    // Add scroll event listener to the viewport
+    if (scrollArea.value) {
+        const viewport = scrollArea.value.$el.querySelector(
+            "[data-radix-scroll-area-viewport]"
+        );
+        if (viewport) {
+            viewport.addEventListener("scroll", handleScroll);
+            scrollToBottom();
+        }
+    }
 });
 
 onBeforeUnmount(() => {
     if (channelSubscription.value) {
         const channel = `chat.${props.conversation.id}`;
         window.Echo.leave(channel);
+    }
+
+    // Remove scroll event listener
+    if (scrollArea.value) {
+        const viewport = scrollArea.value.$el.querySelector(
+            "[data-radix-scroll-area-viewport]"
+        );
+        if (viewport) {
+            viewport.removeEventListener("scroll", handleScroll);
+        }
     }
 });
 </script>

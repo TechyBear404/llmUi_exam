@@ -1,38 +1,25 @@
 <template>
     <AuthenticatedLayout>
-        <!-- Remove h-screen since AuthenticatedLayout already provides full height -->
-        <div class="flex flex-1 bg-gray-900">
-            <!-- Left Sidebar -->
-            <div class="flex flex-col flex-shrink-0 w-80 bg-gray-800 border-r border-gray-700">
-                <!-- Fixed header section -->
-                <div class="p-4 space-y-4">
-                    <!-- Model Selector -->
-                    <select
-                        v-model="selectedModel"
-                        @change="handleModelChange"
-                        class="w-full p-2 text-white bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                        <option
-                            v-for="model in models"
-                            :key="model.id"
-                            :value="model.id"
-                        >
-                            {{ model.name }}
-                        </option>
-                    </select>
-
-                    <!-- New Chat Button -->
-                    <button
+        <div class="flex h-[calc(100vh-4rem)] overflow-hidden">
+            <!-- Left Sidebar with Conversations -->
+            <div class="flex flex-col w-80 border-r bg-muted/50">
+                <!-- New Chat Button -->
+                <div class="p-4 border-b">
+                    <Button
                         @click="createNewConversation"
-                        class="flex items-center justify-center w-full px-4 py-2 space-x-2 font-medium text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+                        class="w-full"
+                        variant="default"
                     >
-                        <font-awesome-icon icon="fa-solid fa-plus" />
+                        <font-awesome-icon
+                            icon="fa-solid fa-plus"
+                            class="w-4 h-4 mr-2"
+                        />
                         <span>New Chat</span>
-                    </button>
+                    </Button>
                 </div>
 
                 <!-- Scrollable conversations list -->
-                <div class="flex-1 overflow-y-auto">
+                <div class="flex-1 min-h-0">
                     <Conversations
                         :current-conversation="currentConversation"
                         :conversations="conversations"
@@ -40,18 +27,28 @@
                 </div>
             </div>
 
-            <!-- Main Chat Area -->
-            <div class="flex flex-col flex-1">
-                <div class="relative flex-1 overflow-hidden">
+            <!-- Right Side: Model Selector and Chat -->
+            <div class="flex flex-col flex-1 min-w-0">
+                <!-- Model Selector Header -->
+                <div class="p-4 border-b bg-muted/50">
+                    <ModelsSelector
+                        v-model="selectedModel"
+                        :models="models"
+                        @update:model-value="handleModelChange"
+                    />
+                </div>
+
+                <!-- Chat Area -->
+                <div class="flex-1 min-h-0">
                     <Chat
                         v-if="currentConversation"
                         :conversation="currentConversation"
                         :model="selectedModel"
-                        class="absolute inset-0"
+                        class="h-full"
                     />
                     <div
                         v-else
-                        class="flex items-center justify-center h-full text-gray-400"
+                        class="flex items-center justify-center h-full text-muted-foreground"
                     >
                         <div class="text-center">
                             <font-awesome-icon
@@ -75,6 +72,8 @@ import { router } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Conversations from "./Partials/Conversations.vue";
 import Chat from "./Partials/Chat.vue";
+import ModelsSelector from "./Partials/ModelsSelector.vue";
+import { Button } from "@/components/ui/button";
 
 const props = defineProps({
     models: {
