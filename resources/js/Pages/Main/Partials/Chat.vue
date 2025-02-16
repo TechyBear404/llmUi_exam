@@ -16,16 +16,12 @@
 
         <ScrollArea class="flex-1 min-h-0" ref="scrollArea">
             <div class="px-4">
-                <div class="py-4 space-y-4" ref="messagesContainer">
+                <div class="py-4 m-auto space-y-4" ref="messagesContainer">
                     <div
                         v-for="message in localMessages"
                         :key="message.id"
                         class="flex items-start"
-                        :class="
-                            message.role === 'assistant'
-                                ? 'justify-start'
-                                : 'justify-end'
-                        "
+                        :class="message.role === 'assistant' ? 'justify-start' : 'justify-end'"
                     >
                         <div
                             v-if="message.role === 'assistant'"
@@ -40,8 +36,8 @@
                             :class="[
                                 'max-w-[80%]',
                                 message.role === 'assistant'
-                                    ? 'bg-muted'
-                                    : 'bg-primary',
+                                    ? 'bg-muted rounded-bl-none'
+                                    : 'bg-primary rounded-br-none',
                             ]"
                         >
                             <CardContent class="relative p-4">
@@ -71,7 +67,7 @@
                                     </div>
                                 </template>
                                 <div
-                                    class="flex items-center justify-between gap-4"
+                                    class="flex items-center justify-between gap-4 mt-4"
                                     :class="
                                         message.role === 'assistant'
                                             ? 'text-gray-400'
@@ -129,7 +125,7 @@
             @click="scrollToBottom"
             size="icon"
             variant="outline"
-            class="fixed z-20 rounded-full shadow-md bottom-24 right-6"
+            class="fixed z-20 rounded-full shadow-md bottom-32 right-6"
         >
             <font-awesome-icon icon="fa-solid fa-arrow-down" class="w-4 h-4" />
         </Button>
@@ -138,12 +134,12 @@
             class="shrink-0 p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 relative z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.1)]"
         >
             <form @submit.prevent="sendMessage" class="flex space-x-2">
-                <Input
+                <Textarea
                     v-model="newMessage"
-                    type="text"
                     class="flex-1"
                     placeholder="Type your message..."
                     :disabled="streaming"
+                    @keydown="handleKeyDown"
                 />
                 <Button
                     type="submit"
@@ -169,10 +165,10 @@
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
 import axios from "axios";
 import { renderMarkdown, copyToClipboard, formatDateTime } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/Components/ui/scroll-area";
+import { Button } from "@/Components/ui/button";
+import { Textarea } from "@/Components/ui/textarea";
+import { Card, CardContent } from "@/Components/ui/card";
 import {
     AlertDialog,
     AlertDialogContent,
@@ -180,7 +176,9 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/Components/ui/alert-dialog";
+import "highlight.js/styles/github.css";
+import { router } from "@inertiajs/vue3";
 
 const props = defineProps({
     conversation: {
@@ -193,9 +191,11 @@ const props = defineProps({
     },
 });
 
+const emit = defineEmits(["update:conversation"]);
+
 const newMessage = ref("");
 const streaming = ref(false);
-const streamedContent = ref("");
+// const streamedContent = ref("");
 const scrollArea = ref(null);
 const messagesContainer = ref(null);
 const error = ref(null);
@@ -278,55 +278,69 @@ const sendMessage = async () => {
         id: `temp-${Date.now()}`,
         role: "user",
         content: messageContent,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
     });
 
     // Add a placeholder for assistant's response
     const assistantMessageId = `temp-assistant-${Date.now()}`;
-    localMessages.value.push({
+    const tempAssistantMessage = {
         id: assistantMessageId,
         role: "assistant",
         content: "",
         isLoading: true,
-    });
-
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    };
+    
+    localMessages.value.push(tempAssistantMessage);
     await nextTick();
     scrollToBottom();
 
     try {
+        // Wait for channel subscription to be ready
+        await new Promise((resolve) => {
+            setupChannelSubscription(() => resolve());
+        });
+        
+        // Now send the message
         await axios.post(route("conversations.ask", props.conversation.id), {
             message: messageContent,
             model: props.model,
         });
     } catch (err) {
         console.error("Error sending message:", err);
-        error.value =
-            err.response?.data?.message ||
-            "Failed to send message. Please try again.";
+        error.value = err.response?.data?.message || "Failed to send message. Please try again.";
         streaming.value = false;
         // Remove the loading message on error
-        localMessages.value = localMessages.value.filter(
-            (msg) => msg.id !== assistantMessageId
-        );
+        localMessages.value = localMessages.value.filter(msg => msg.id !== assistantMessageId);
         await nextTick();
         scrollToBottom();
     }
 };
 
-const setupChannelSubscription = () => {
+const setupChannelSubscription = (onSubscribed = null) => {
     const channel = `chat.${props.conversation.id}`;
-    console.log("🔌 Tentative de connexion au canal:", channel);
+    console.log("🔌 Connecting to channel:", channel);
+
+    // Cleanup existing subscription if any
+    if (channelSubscription.value) {
+        window.Echo.leave(channel);
+    }
 
     channelSubscription.value = window.Echo.private(channel)
         .subscribed(() => {
-            console.log("✅ Connecté avec succès au canal:", channel);
+            console.log("✅ Successfully subscribed to channel:", channel);
+            if (onSubscribed) onSubscribed();
         })
         .error((error) => {
-            console.error("❌ Erreur de connexion au canal:", error);
+            console.error("❌ Channel subscription error:", error);
+            streaming.value = false;
+            error.value = "Failed to connect to chat. Please refresh the page.";
         })
         .listen(".message.streamed", (event) => {
-            console.log("📨 Message reçu:", event);
+            console.log("📨 Message received:", event);
 
-            // Only set error if it comes from an event with an error property
             if (event.error) {
                 console.error("❌ Error received:", event.error);
                 error.value = event.error;
@@ -337,27 +351,78 @@ const setupChannelSubscription = () => {
                 return;
             }
 
-            const lastMessage =
-                localMessages.value[localMessages.value.length - 1];
-
+            const lastMessage = localMessages.value[localMessages.value.length - 1];
             if (!lastMessage || lastMessage.role !== "assistant") {
                 console.log("⚠️ No assistant message to update");
                 return;
             }
 
-            if (lastMessage.isLoading) {
-                lastMessage.isLoading = false;
-                streaming.value = true;
-            }
-
+            lastMessage.isLoading = false;
             lastMessage.content = event.content;
-            scrollToBottom();
 
             if (event.isComplete) {
                 console.log("✅ Message complete");
                 streaming.value = false;
+                updateTitle();
+            }
+
+            if (isNearBottom.value) {
+                nextTick(() => scrollToBottom());
             }
         });
+};
+
+// Setup initial channel subscription
+onMounted(() => {
+    setupChannelSubscription();
+    
+    // Add scroll event listener
+    if (scrollArea.value) {
+        const viewport = scrollArea.value.$el.querySelector(
+            "[data-radix-scroll-area-viewport]"
+        );
+        if (viewport) {
+            viewport.addEventListener("scroll", handleScroll);
+            scrollToBottom();
+        }
+    }
+});
+
+// Cleanup subscription on unmount
+onBeforeUnmount(() => {
+    if (channelSubscription.value) {
+        window.Echo.leave(`chat.${props.conversation.id}`);
+    }
+    
+    if (scrollArea.value) {
+        const viewport = scrollArea.value.$el.querySelector(
+            "[data-radix-scroll-area-viewport]"
+        );
+        if (viewport) {
+            viewport.removeEventListener("scroll", handleScroll);
+        }
+    }
+});
+
+const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.ctrlKey) {
+        event.preventDefault();
+        sendMessage();
+    } else if (event.key === "Enter" && event.ctrlKey) {
+        newMessage.value += "\n";
+    }
+};
+
+const updateTitle = async () => {
+    const messageCount = localMessages.value.length;
+    if (messageCount === 2 || messageCount % 6 === 0) {
+        try {
+            await axios.post(route("conversations.title", props.conversation.id));
+            await router.reload({ preserveScroll: true });
+        } catch (err) {
+            console.error("Error updating title:", err);
+        }
+    }
 };
 
 // Reset error when conversation changes
@@ -382,49 +447,20 @@ watch(
 
 watch(
     () => props.conversation,
-    async (newConv) => {
+    async (newConv, oldConv) => {
         error.value = null;
-        localMessages.value = [...newConv.messages];
-        await nextTick();
-        scrollToBottom();
-        isNearBottom.value = true;
-        showScrollButton.value = false;
+        // Only update messages if it's a different conversation
+        if (!oldConv || newConv.id !== oldConv.id) {
+            localMessages.value = [...newConv.messages];
+            nextTick(() => {
+                scrollToBottom();
+                isNearBottom.value = true;
+                showScrollButton.value = false;
+            });
+        }
     },
     { immediate: true, deep: true }
 );
-
-onMounted(async () => {
-    setupChannelSubscription();
-    await nextTick();
-
-    // Add scroll event listener to the viewport
-    if (scrollArea.value) {
-        const viewport = scrollArea.value.$el.querySelector(
-            "[data-radix-scroll-area-viewport]"
-        );
-        if (viewport) {
-            viewport.addEventListener("scroll", handleScroll);
-            scrollToBottom();
-        }
-    }
-});
-
-onBeforeUnmount(() => {
-    if (channelSubscription.value) {
-        const channel = `chat.${props.conversation.id}`;
-        window.Echo.leave(channel);
-    }
-
-    // Remove scroll event listener
-    if (scrollArea.value) {
-        const viewport = scrollArea.value.$el.querySelector(
-            "[data-radix-scroll-area-viewport]"
-        );
-        if (viewport) {
-            viewport.removeEventListener("scroll", handleScroll);
-        }
-    }
-});
 </script>
 
 <style lang="scss" scoped></style>

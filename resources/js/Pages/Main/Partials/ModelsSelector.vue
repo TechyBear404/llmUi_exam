@@ -40,7 +40,7 @@ import {
     SelectLabel,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select";
+} from "@/Components/ui/select";
 import { computed } from "vue";
 
 const props = defineProps({

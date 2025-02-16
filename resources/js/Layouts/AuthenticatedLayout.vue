@@ -11,7 +11,7 @@ const showingNavigationDropdown = ref(false);
 </script>
 
 <template>
-    <div class="min-h-screen flex flex-col bg-background">
+    <div class="flex flex-col h-screen overflow-hidden bg-background">
         <nav class="border-b border-border bg-card">
             <div class="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
@@ -31,7 +31,10 @@ const showingNavigationDropdown = ref(false);
                         >
                             <NavLink
                                 :href="route('ask.index')"
-                                :active="route().current('ask.index')"
+                                :active="
+                                    route().current('ask.index') ||
+                                    route().current('conversations.show')
+                                "
                             >
                                 Chat
                             </NavLink>
@@ -46,7 +49,7 @@ const showingNavigationDropdown = ref(false);
                                     <span class="inline-flex rounded-md">
                                         <button
                                             type="button"
-                                            class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 transition duration-150 ease-in-out bg-card border border-border rounded-md text-foreground hover:bg-muted focus:outline-none"
+                                            class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 transition duration-150 ease-in-out border rounded-md bg-card border-border text-foreground hover:bg-muted focus:outline-none"
                                         >
                                             {{ $page.props.auth.user.name }}
 
@@ -136,7 +139,10 @@ const showingNavigationDropdown = ref(false);
                 <div class="pt-2 pb-3 space-y-1">
                     <ResponsiveNavLink
                         :href="route('ask.index')"
-                        :active="route().current('ask.index')"
+                        :active="
+                            route().current('ask.index') ||
+                            route().current('conversations.show')
+                        "
                     >
                         Chat
                     </ResponsiveNavLink>
@@ -170,14 +176,14 @@ const showingNavigationDropdown = ref(false);
         </nav>
 
         <!-- Page Heading -->
-        <header class="bg-card shadow" v-if="$slots.header">
+        <header class="shadow bg-card" v-if="$slots.header">
             <div class="px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <slot name="header" />
             </div>
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 flex min-h-0">
+        <main class="flex flex-1 min-h-0">
             <slot />
         </main>
     </div>

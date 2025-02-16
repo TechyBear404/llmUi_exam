@@ -19,9 +19,10 @@ Route::middleware('auth')->group(function () {
 
     // Chat routes
     Route::post('/conversations/{conversation}/ask', [AskController::class, 'streamMessage'])->name('conversations.ask');
-    // Route::resource('conversations', ConversationController::class);
+    Route::post('/conversations/{conversation}/title', [ConversationController::class, 'updateTitle'])->name('conversations.title');
     Route::get('/conversations/{conversation}', [ConversationController::class, 'show'])->name('conversations.show');
     Route::post('/conversations', [ConversationController::class, 'store'])->name('conversations.store');
+    Route::put('/conversations/{conversation}', [ConversationController::class, 'update'])->name('conversations.update');
     Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy'])->name('conversations.destroy');
 });
 

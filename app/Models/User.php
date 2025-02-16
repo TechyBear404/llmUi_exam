@@ -21,6 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'last_selected_conversation_id',
+        'last_used_model',
     ];
 
     public function conversations()

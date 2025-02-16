@@ -6,6 +6,7 @@ use App\Events\ChatMessageStreamed;
 use App\Models\Conversation;
 use App\Services\ChatService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class AskController extends Controller
@@ -34,16 +35,20 @@ class AskController extends Controller
         ]);
 
         try {
-            // 1. Sauvegarder le message de l'utilisateur
-            $conversation->messages()->create([
+            Log::info('Starting message stream', [
+                'conversation_id' => $conversation->id,
+                'model' => $validated['model']
+            ]);
+            
+            // Save user message first
+            $userMessage = $conversation->messages()->create([
                 'content' => $validated['message'],
                 'role'    => 'user',
             ]);
 
-            // 2. Nom du canal
             $channelName = "chat.{$conversation->id}";
 
-            // 3. Récupérer historique
+            // Get conversation history
             $messages = $conversation->messages()
                 ->orderBy('created_at', 'asc')
                 ->get()
@@ -53,78 +58,66 @@ class AskController extends Controller
                 ])
                 ->toArray();
 
-            // 4. Obtenir un flux depuis le ChatService
-            $stream = (new ChatService())->streamConversation(
-                messages: $messages,
-                model: $conversation->model ?? $request->user()->last_used_model ?? ChatService::DEFAULT_MODEL,
-            );
-
-            // 5. Créer le message "assistant" dans la BD (vide pour l'instant)
+            // Create empty assistant message
             $assistantMessage = $conversation->messages()->create([
                 'content' => '',
                 'role'    => 'assistant',
             ]);
 
-            // 6. Variables pour accumuler la réponse
-            $fullResponse = '';
-            $buffer = '';
-            $lastBroadcastTime = microtime(true) * 1000; // ms
+            // Stream the response
+            $stream = (new ChatService())->streamConversation(
+                messages: $messages,
+                model: $conversation->model ?? $request->user()->last_used_model ?? ChatService::DEFAULT_MODEL,
+            );
 
-            // 7. Itération sur le flux
+            $fullResponse = '';
+            $lastBroadcastTime = microtime(true);
+
             foreach ($stream as $response) {
                 $chunk = $response->choices[0]->delta->content ?? '';
-
                 if ($chunk) {
                     $fullResponse .= $chunk;
-                    $buffer .= $chunk;
+                    $currentTime = microtime(true);
 
-                    // Broadcast seulement toutes les ~100ms
-                    $currentTime = microtime(true) * 1000;
-                    if ($currentTime - $lastBroadcastTime >= 100) {
+                    // Broadcast every 100ms to avoid overwhelming the connection
+                    if ($currentTime - $lastBroadcastTime >= 0.1) {
                         broadcast(new ChatMessageStreamed(
-                            channel: $channelName,
-                            content: $fullResponse, // Changed to send full response instead of buffer
-                            isComplete: false
+                            $channelName,
+                            $fullResponse,
+                            false
                         ));
-
-                        $buffer = '';
                         $lastBroadcastTime = $currentTime;
                     }
                 }
             }
 
-            // 8. Diffuser le buffer restant
-            if (!empty($buffer)) {
-                broadcast(new ChatMessageStreamed(
-                    channel: $channelName,
-                    content: $fullResponse, // Changed to send full response
-                    isComplete: false
-                ));
-            }
+            // Update the assistant message with complete response
+            $assistantMessage->update(['content' => $fullResponse]);
 
-            // 9. Mettre à jour la BD avec le texte complet
-            $assistantMessage->update([
-                'content' => $fullResponse
-            ]);
-
-            // 10. Émettre un dernier événement pour signaler la complétion
+            // Send final message
             broadcast(new ChatMessageStreamed(
-                channel: $channelName,
-                content: $fullResponse,
-                isComplete: true
+                $channelName,
+                $fullResponse,
+                true
             ));
 
-            return response()->json(['status' => 'success']);
+            return response()->json([
+                'status' => 'success',
+                'message' => $assistantMessage
+            ]);
+
         } catch (\Exception $e) {
-            // Diffuser l’erreur
-            if (isset($channelName)) {
-                broadcast(new ChatMessageStreamed(
-                    channel: $channelName,
-                    content: "Error: " . $e->getMessage(),
-                    isComplete: true,
-                    error: true
-                ));
-            }
+            Log::error('Error in stream message', [
+                'error' => $e->getMessage(),
+                'conversation_id' => $conversation->id
+            ]);
+
+            broadcast(new ChatMessageStreamed(
+                $channelName ?? "chat.{$conversation->id}",
+                "Error: " . $e->getMessage(),
+                true,
+                true
+            ));
 
             return response()->json(['error' => $e->getMessage()], 500);
         }
