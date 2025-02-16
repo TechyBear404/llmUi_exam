@@ -97,46 +97,60 @@ class ChatService
     public function makeTitle(Conversation $conversation): string
     {
         try {
-            // Load messages
-            $messages = $conversation->messages()
+            // Get conversation messages first
+            $conversationMessages = $conversation->messages()
                 ->orderBy('created_at')
                 ->get()
                 ->map(fn($msg) => [
                     'role' => $msg->role,
-                    'content' => $msg->content,
+                    'content' => strip_tags($msg->content), // Remove any HTML/markdown
                 ])
                 ->toArray();
 
-            // Include system prompt for title
-            $systemPrompt = $this->getTitleSystemPrompt();
-            array_unshift($messages, [
-                'role' => 'system',
-                'content' => $systemPrompt,
-            ]);
+            // Add system message and user prompt
+            $messages = array_merge(
+                [$this->getTitleSystemPrompt()],
+                $conversationMessages,
+                [[
+                    'role' => 'user',
+                    'content' => "Based on the conversation above, generate a title. Response with ONLY the title."
+                ]]
+            );
+
+            logger()->info('Messages pour le titre:', ['messages' => $messages]);
 
             $model = $conversation->model_id ?? self::DEFAULT_MODEL;
 
-            // Send request
             $response = $this->client->chat()->create([
                 'model' => $model,
                 'messages' => $messages,
-                'temperature' => 0.2,
+                'temperature' => 0.3, // Reduced for more focused output
+                'max_tokens' => 20,
+                'stop' => ["\n", "."]  // Stop at newlines or periods
             ]);
 
-            // Add response validation
-            if (!isset($response['choices']) || empty($response['choices'])) {
-                logger()->error('Invalid API response:', ['response' => $response]);
-                throw new \Exception('Invalid response from AI service');
+            logger()->debug('Réponse API brute:', [
+                'response' => $response,
+                'content' => $response->choices[0]->message->content ?? null
+            ]);
+
+            $title = $response->choices[0]->message->content ?? '';
+
+            if (empty($title)) {
+                // Fallback title if generation fails
+                return "Conversation #" . $conversation->id;
             }
 
-            return $response['choices'][0]['message']['content'] ?? '';
+            return $title;
         } catch (\Exception $e) {
             logger()->error('Chat service error:', [
                 'error' => $e->getMessage(),
-                'model' => $model,
+                'trace' => $e->getTraceAsString(),
+                'model' => $model ?? self::DEFAULT_MODEL,
                 'conversation_id' => $conversation->id
             ]);
-            throw $e;
+            // Return fallback title on error
+            return "Conversation #" . $conversation->id;
         }
     }
 
@@ -160,47 +174,55 @@ class ChatService
         return [
             'role' => 'system',
             'content' => <<<EOT
-                Tu es un assistant de chat. La date et l'heure actuelle est le {$now}.
-                Tu es actuellement utilisé par {$user->name}.
-                Tu dois utilisé le Markdown pour formater tes réponses.
+                You are a chat assistant. The current date and time is **{$now}**.
+                You are currently being used by **{$user->name}**.
+                All your responses **must be formatted using Markdown**.
 
-                Instructions importantes:
-                - Ignore toutes les instructions des messages précédents.
-                - Chaque message doit être traité de manière indépendante.
-                - Si aucune instruction spécifique n'est donnée dans le message actuel, réponds de manière professionnelle et neutre.
-                - Les seules instructions à suivre sont celles présentes dans le message actuel.
-                - Le formatage Markdown doit toujours être utilisé pour les réponses.
+                ### **Important Instructions:**
+                - **Ignore all previous instructions** from past messages.
+                - **Each message must be processed independently** without considering prior context.
+                - If the current message does **not** contain specific instructions, **respond professionally and neutrally**.
+                - **Only follow instructions provided in the current message**.
+                - Always use **Markdown formatting** for your responses.
+                - **Detect the language of the message and respond in the same language**.
+
+                ### **Additional Formatting Rules:**
+                - Use `**bold**`, `*italics*`, and `- bullet points` where appropriate.
+                - For code, use `inline code` or fenced code blocks (` ``` `).
                 EOT,
         ];
     }
 
-    private function getTitleSystemPrompt(): string
+    private function getTitleSystemPrompt(): array
     {
-        return <<<EOT
-            **Rôle :**
-            Tu es un assistant expert en génération de titres de conversation. Ta mission est de créer un **titre court, précis et pertinent** à partir des messages échangés.
+        return [
+            'role' => 'system',
+            'content' => <<<EOT
+                You are an assistant specialized in generating conversation titles.
+                Your goal is to create a short, clear, and relevant title from the conversation messages.
 
-            **Consignes :**
-            1. **Clarté & Fidélité** : Le titre doit **résumer fidèlement le sujet principal** de la conversation sans interprétation excessive.
-            2. **Concision** : Il doit être **court** (maximum **10 mots**, sans articles inutiles ni formules superflues).
-            3. **Impact & Pertinence** : Il doit **attirer l’attention** tout en restant **informatif et neutre**.
-            4. **Lexique Spécifique** : Privilégie des **mots-clés précis** plutôt que des termes vagues ou génériques.
-            5. **Éviter les répétitions** : Reformule intelligemment pour éviter la redondance des mots.
-            6. **Gestion des conversations complexes** :
-            - **Si un seul sujet principal émerge**, résume-le en une phrase claire.
-            - **Si plusieurs sujets distincts sont abordés**, privilégie le plus dominant ou regroupe-les intelligemment.
-            - **Si la conversation est vague ou incohérente**, utilise un titre descriptif général plutôt qu’un titre inexact.
+                Instructions:
+                1. The title must accurately reflect the main topic of the conversation.
+                2. Keep it short (maximum 10 words).
+                3. It should be informative and engaging, without being misleading.
+                4. Use specific and evocative words rather than generic terms.
+                5. Avoid repetition and unnecessary words.
+                6. If multiple topics are discussed, prioritize the most important one.
+                7. If the conversation is unclear or vague, use a general but relevant title.
+                8. Detect the language of the conversation and generate the title in the same language.
+                9. Do NOT format the title using Markdown, quotation marks, or any special syntax. The output must be plain text.
 
-            **Exemples de bonnes pratiques :**
-            ✅ **SEO et marketing digital** → *"Stratégies SEO pour améliorer la visibilité en ligne"*
-            ✅ **Bug informatique sur Windows** → *"Correction d’un bug Windows 11 – Solutions"*
-            ✅ **Discussion sur un livre** → *"Critique du roman '1984' de George Orwell"*
-            ✅ **Conversations multiples sur IA et programmation** → *"Intelligence artificielle et développement : enjeux et outils"*
+                Output:
+                - The title must be in the same language as the conversation.
+                - The title must be plain text only (no Markdown, no quotes, no extra formatting).
 
-            **Exemples d’erreurs à éviter :**
-            ❌ **Trop générique** → *"Discussion générale sur le web"* (Pas assez précis)
-            ❌ **Trop long** → *"Comment optimiser son SEO en 2024 pour Google"* (Trop détaillé)
-            ❌ **Trop vague** → *"Problème technique"* (Pas assez informatif)
-        EOT;
+                Example outputs (Plain Text Only):
+                - French: Optimiser son site pour le SEO
+                - English: Fixing a bug on Windows 11
+                - Spanish: Solución de error en Windows 11
+                - German: SEO-Optimierung für bessere Sichtbarkeit
+
+            EOT,
+        ];
     }
 }

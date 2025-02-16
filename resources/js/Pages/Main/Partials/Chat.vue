@@ -21,7 +21,11 @@
                         v-for="message in localMessages"
                         :key="message.id"
                         class="flex items-start"
-                        :class="message.role === 'assistant' ? 'justify-start' : 'justify-end'"
+                        :class="
+                            message.role === 'assistant'
+                                ? 'justify-start'
+                                : 'justify-end'
+                        "
                     >
                         <div
                             v-if="message.role === 'assistant'"
@@ -178,7 +182,7 @@ import {
     AlertDialogTitle,
 } from "@/Components/ui/alert-dialog";
 import "highlight.js/styles/github.css";
-import { router } from "@inertiajs/vue3";
+import { router, useForm } from "@inertiajs/vue3";
 
 const props = defineProps({
     conversation: {
@@ -292,7 +296,7 @@ const sendMessage = async () => {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     };
-    
+
     localMessages.value.push(tempAssistantMessage);
     await nextTick();
     scrollToBottom();
@@ -302,7 +306,7 @@ const sendMessage = async () => {
         await new Promise((resolve) => {
             setupChannelSubscription(() => resolve());
         });
-        
+
         // Now send the message
         await axios.post(route("conversations.ask", props.conversation.id), {
             message: messageContent,
@@ -310,10 +314,14 @@ const sendMessage = async () => {
         });
     } catch (err) {
         console.error("Error sending message:", err);
-        error.value = err.response?.data?.message || "Failed to send message. Please try again.";
+        error.value =
+            err.response?.data?.message ||
+            "Failed to send message. Please try again.";
         streaming.value = false;
         // Remove the loading message on error
-        localMessages.value = localMessages.value.filter(msg => msg.id !== assistantMessageId);
+        localMessages.value = localMessages.value.filter(
+            (msg) => msg.id !== assistantMessageId
+        );
         await nextTick();
         scrollToBottom();
     }
@@ -351,7 +359,8 @@ const setupChannelSubscription = (onSubscribed = null) => {
                 return;
             }
 
-            const lastMessage = localMessages.value[localMessages.value.length - 1];
+            const lastMessage =
+                localMessages.value[localMessages.value.length - 1];
             if (!lastMessage || lastMessage.role !== "assistant") {
                 console.log("⚠️ No assistant message to update");
                 return;
@@ -375,7 +384,7 @@ const setupChannelSubscription = (onSubscribed = null) => {
 // Setup initial channel subscription
 onMounted(() => {
     setupChannelSubscription();
-    
+
     // Add scroll event listener
     if (scrollArea.value) {
         const viewport = scrollArea.value.$el.querySelector(
@@ -393,7 +402,7 @@ onBeforeUnmount(() => {
     if (channelSubscription.value) {
         window.Echo.leave(`chat.${props.conversation.id}`);
     }
-    
+
     if (scrollArea.value) {
         const viewport = scrollArea.value.$el.querySelector(
             "[data-radix-scroll-area-viewport]"
@@ -417,8 +426,19 @@ const updateTitle = async () => {
     const messageCount = localMessages.value.length;
     if (messageCount === 2 || messageCount % 6 === 0) {
         try {
-            await axios.post(route("conversations.title", props.conversation.id));
-            await router.reload({ preserveScroll: true });
+            router.post(
+                route("conversations.title", props.conversation),
+                {},
+                {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        // Title updated successfully
+                    },
+                    onError: (errors) => {
+                        console.error("Error updating title:", errors);
+                    },
+                }
+            );
         } catch (err) {
             console.error("Error updating title:", err);
         }

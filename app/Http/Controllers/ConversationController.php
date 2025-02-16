@@ -93,19 +93,16 @@ class ConversationController extends Controller
     {
         abort_if($conversation->user_id !== Auth::id(), 403);
 
+        // $conversation = Conversation::find($conversation->id)->with('messages')->first();
+        // dd($conversation);
+
         try {
             $title = $this->chatService->makeTitle($conversation);
             $conversation->update(['title' => $title]);
 
-            return response()->json([
-                'success' => true,
-                'title' => $title
-            ]);
+            return redirect()->route('conversations.show', $conversation);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Error updating conversation title'
-            ], 500);
+            return redirect()->back()->with('error', 'Failed to update title');
         }
     }
 }

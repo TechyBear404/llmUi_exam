@@ -13,10 +13,10 @@ class Conversation extends Model
         return $this->belongsTo(User::class);
     }
 
-    // public function customInstruction()
-    // {
-    //     return $this->belongsTo(CustomInstruction::class);
-    // }
+    public function customInstruction()
+    {
+        return $this->belongsTo(CustomInstruction::class);
+    }
 
     public function messages()
     {

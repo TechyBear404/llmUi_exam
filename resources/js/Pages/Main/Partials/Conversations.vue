@@ -23,6 +23,7 @@
                         ? 'bg-primary/80'
                         : 'hover:bg-primary/50',
                 ]"
+                :title="conversation.title"
             >
                 <div class="flex items-center flex-1 min-w-0 space-x-3">
                     <font-awesome-icon
