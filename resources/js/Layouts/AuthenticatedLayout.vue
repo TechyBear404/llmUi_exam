@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { nextTick, ref, watch } from "vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import Dropdown from "@/Components/Dropdown.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
@@ -7,7 +7,42 @@ import NavLink from "@/Components/NavLink.vue";
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
 import { Link } from "@inertiajs/vue3";
 
+import { Toaster } from "@/Components/ui/toast";
+import { useToast } from "@/Components/ui/toast/use-toast";
+import { usePage } from "@inertiajs/vue3";
+
 const showingNavigationDropdown = ref(false);
+const page = usePage();
+const { toast } = useToast();
+
+watch(
+    () => page.props.flash?.success,
+    (message) => {
+        if (message) {
+            nextTick(() => {
+                toast({
+                    title: message,
+                    variant: "success",
+                });
+            });
+        }
+    },
+    { deep: true, immediate: true }
+);
+
+watch(
+    () => page.props.flash?.error,
+    (message) => {
+        if (message) {
+            nextTick(() => {
+                toast({
+                    title: message,
+                    variant: "destructive",
+                });
+            });
+        }
+    }
+);
 </script>
 
 <template>
@@ -37,6 +72,9 @@ const showingNavigationDropdown = ref(false);
                                 "
                             >
                                 Chat
+                            </NavLink>
+                            <NavLink :href="route('custom-instructions.index')">
+                                Instructions Personnalisées
                             </NavLink>
                         </div>
                     </div>
@@ -146,6 +184,11 @@ const showingNavigationDropdown = ref(false);
                     >
                         Chat
                     </ResponsiveNavLink>
+                    <ResponsiveNavLink
+                        :href="route('custom-instructions.index')"
+                    >
+                        Instructions Personnalisées
+                    </ResponsiveNavLink>
                 </div>
 
                 <!-- Responsive Settings Options -->
@@ -186,5 +229,7 @@ const showingNavigationDropdown = ref(false);
         <main class="flex flex-1 min-h-0">
             <slot />
         </main>
+
+        <Toaster richColors />
     </div>
 </template>

@@ -28,6 +28,7 @@
         "@fortawesome/free-regular-svg-icons": "^6.7.2",
         "@fortawesome/free-solid-svg-icons": "^6.7.2",
         "@fortawesome/vue-fontawesome": "^3.0.8",
+        "@vee-validate/zod": "^4.15.0",
         "@vueuse/core": "^12.5.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -36,6 +37,8 @@
         "markdown-it": "^14.1.0",
         "radix-vue": "^1.9.13",
         "tailwind-merge": "^3.0.1",
-        "tailwindcss-animate": "^1.0.7"
+        "tailwindcss-animate": "^1.0.7",
+        "vee-validate": "^4.15.0",
+        "zod": "^3.24.2"
     }
 }

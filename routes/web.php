@@ -3,6 +3,7 @@
 use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AskController;
+use App\Http\Controllers\CustomInstructionController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -24,6 +25,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/conversations', [ConversationController::class, 'store'])->name('conversations.store');
     Route::put('/conversations/{conversation}', [ConversationController::class, 'update'])->name('conversations.update');
     Route::delete('/conversations/{conversation}', [ConversationController::class, 'destroy'])->name('conversations.destroy');
+
+    // Custom instruction routes
+    Route::get('/custom-instructions', [CustomInstructionController::class, 'index'])->name('custom-instructions.index');
+    Route::get('/custom-instructions/create', [CustomInstructionController::class, 'create'])->name('custom-instructions.create');
+    Route::post('/custom-instructions', [CustomInstructionController::class, 'store'])->name('custom-instructions.store');
+    Route::get('/custom-instructions/{customInstruction}', [CustomInstructionController::class, 'show'])->name('custom-instructions.show');
+    Route::put('/custom-instructions/{customInstruction}', [CustomInstructionController::class, 'update'])->name('custom-instructions.update');
 });
 
 require __DIR__ . '/auth.php';

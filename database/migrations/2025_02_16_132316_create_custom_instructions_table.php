@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('custom_instructions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('title')->default('Instructions personnalisées');
 
             // About User section
             $table->text('user_background')->nullable(); // Profession, expertise
@@ -23,7 +24,8 @@ return new class extends Migration
 
             // Assistant Behavior section
             $table->text('assistant_background')->nullable(); // Profession, expertise
-            $table->enum('assistant_personality', [
+
+            $table->enum('assistant_tone', [
                 'friendly',
                 'professional',
                 'casual',
@@ -31,13 +33,6 @@ return new class extends Migration
                 'technical',
                 'educational'
             ])->default('friendly');
-
-            $table->enum('communication_style', [
-                'formal',
-                'casual',
-                'technical',
-                'educational'
-            ])->default('casual');
 
             $table->enum('response_style', [
                 'normal',
