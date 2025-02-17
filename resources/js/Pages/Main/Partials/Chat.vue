@@ -296,29 +296,35 @@
         <div
             class="shrink-0 p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 relative z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.1)]"
         >
-            <form @submit.prevent="sendMessage" class="flex space-x-2">
-                <Textarea
-                    v-model="newMessage"
-                    class="flex-1 bg-muted/50"
-                    placeholder="Tapez votre message..."
-                    :disabled="streaming"
-                    @keydown="handleKeyDown"
-                />
-                <Button
-                    type="submit"
-                    :disabled="!newMessage.trim() || streaming"
-                >
-                    <font-awesome-icon
-                        v-if="!streaming"
-                        icon="fa-solid fa-paper-plane"
-                        class="w-4 h-4"
+            <form @submit.prevent="sendMessage" class="space-y-2">
+                <div v-if="model.supports_image" class="flex items-center gap-2 text-sm text-muted-foreground">
+                    <font-awesome-icon icon="fa-solid fa-image" class="w-4 h-4" />
+                    <span>Ce modèle supporte l'envoi d'images</span>
+                </div>
+                <div class="flex space-x-2">
+                    <Textarea
+                        v-model="newMessage"
+                        class="flex-1 bg-muted/50"
+                        placeholder="Tapez votre message..."
+                        :disabled="streaming"
+                        @keydown="handleKeyDown"
                     />
-                    <font-awesome-icon
-                        v-else
-                        icon="fa-solid fa-spinner"
-                        class="w-4 h-4 animate-spin"
-                    />
-                </Button>
+                    <Button
+                        type="submit"
+                        :disabled="!newMessage.trim() || streaming"
+                    >
+                        <font-awesome-icon
+                            v-if="!streaming"
+                            icon="fa-solid fa-paper-plane"
+                            class="w-4 h-4"
+                        />
+                        <font-awesome-icon
+                            v-else
+                            icon="fa-solid fa-spinner"
+                            class="w-4 h-4 animate-spin"
+                        />
+                    </Button>
+                </div>
             </form>
         </div>
     </div>
@@ -357,7 +363,7 @@ const props = defineProps({
         required: true,
     },
     model: {
-        type: String,
+        type: Object,
         required: true,
     },
 });

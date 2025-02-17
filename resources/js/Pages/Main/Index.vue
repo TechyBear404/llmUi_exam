@@ -96,7 +96,7 @@
                     <Chat
                         v-if="currentConversation"
                         :conversation="currentConversation"
-                        :model="selectedModel"
+                        :model="models.find(m => m.id === selectedModel)"
                         class="h-full"
                     />
                     <div
