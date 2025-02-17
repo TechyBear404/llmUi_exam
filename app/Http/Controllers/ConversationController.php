@@ -67,6 +67,8 @@ class ConversationController extends Controller
     {
         $this->authorize('update', $conversation);
 
+        // dd($request->all());
+
         $validated = $request->validate([
             'model' => 'nullable|array',
             'title' => 'nullable|string',
@@ -77,7 +79,7 @@ class ConversationController extends Controller
         $updateData = [];
         if (isset($validated['model'])) {
             $updateData['model_id'] = $validated['model']['id'];
-            $updateData['context_length'] = $validated['model']['context_length'];
+            $updateData['max_contecxt_length'] = $validated['model']['context_length'];
 
             $user = User::find(Auth::id());
             $user->update([
@@ -89,6 +91,7 @@ class ConversationController extends Controller
         if (isset($validated['title'])) {
             $updateData['title'] = $validated['title'];
         }
+        // dd($updateData);
 
         $conversation->update($updateData);
 

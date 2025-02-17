@@ -11,7 +11,9 @@ class Conversation extends Model
         'title',
         'user_id',
         'model_id',
-        'custom_instruction_id'
+        'custom_instruction_id',
+        'context_length',
+        'max_contecxt_length',
     ];
 
     public function user(): BelongsTo

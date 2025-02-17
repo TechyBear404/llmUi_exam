@@ -326,12 +326,12 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from "vue";
-import axios from "axios";
 import { renderMarkdown, copyToClipboard, formatDateTime } from "@/lib/utils";
 import { ScrollArea } from "@/Components/ui/scroll-area";
 import { Button } from "@/Components/ui/button";
 import { Textarea } from "@/Components/ui/textarea";
 import { Card, CardContent } from "@/Components/ui/card";
+import axios from "axios";
 import {
     AlertDialog,
     AlertDialogContent,
@@ -366,7 +366,6 @@ const emit = defineEmits(["update:conversation"]);
 
 const newMessage = ref("");
 const streaming = ref(false);
-// const streamedContent = ref("");
 const scrollArea = ref(null);
 const messagesContainer = ref(null);
 const error = ref(null);
@@ -380,6 +379,10 @@ const deletingMessage = ref(false);
 const showDeleteDialog = ref(false);
 
 const deleteForm = useForm({});
+const form = useForm({
+    message: "",
+    model: props.model,
+});
 
 const scrollToBottom = () => {
     if (scrollArea.value) {
@@ -449,12 +452,16 @@ const sendMessage = async () => {
     streaming.value = true;
     error.value = null;
 
-    // Only add the user message if it's not a resend (not already in messages)
-    const isResend = localMessages.value.some(
-        msg => msg.role === 'user' && msg.content === messageContent
-    );
+    // Only add the user message if it's not same as last user message
+    console.log(localMessages.value);
+    console.log(localMessages.value);
+    const lastMessage = localMessages.value[localMessages.value.length - 1];
 
-    if (!isResend) {
+    if (
+        !lastMessage ||
+        lastMessage.role !== "user" ||
+        lastMessage.content !== messageContent
+    ) {
         localMessages.value.push({
             id: `temp-${Date.now()}`,
             role: "user",
@@ -483,15 +490,20 @@ const sendMessage = async () => {
             setupChannelSubscription(() => resolve());
         });
 
-        await axios.post(route("conversations.ask", props.conversation.id), {
-            message: messageContent,
-            model: props.model,
-        });
+        const response = await axios.post(
+            route("conversations.ask", props.conversation.id),
+            {
+                message: messageContent,
+                model: props.model,
+            }
+        );
+
+        if (response.data.conversation && response.data.conversation.messages) {
+            localMessages.value = response.data.conversation.messages;
+        }
     } catch (err) {
         console.error("Error sending message:", err);
-        error.value =
-            err.response?.data?.message ||
-            "Échec de l'envoi du message. Veuillez réessayer.";
+        error.value = "Échec de l'envoi du message. Veuillez réessayer.";
         streaming.value = false;
         // Remove the loading message on error
         localMessages.value = localMessages.value.filter(
@@ -523,7 +535,7 @@ const setupChannelSubscription = (onSubscribed = null) => {
                 "Échec de la connexion au chat. Veuillez actualiser la page.";
         })
         .listen(".message.streamed", (event) => {
-            // console.log("📨 Message received:", event);
+            console.log("📨 Message received:", event);
 
             if (event.error) {
                 console.error("❌ Error received:", event.error);
@@ -538,7 +550,6 @@ const setupChannelSubscription = (onSubscribed = null) => {
             const lastMessage =
                 localMessages.value[localMessages.value.length - 1];
             if (!lastMessage || lastMessage.role !== "assistant") {
-                // console.log("⚠️ No assistant message to update");
                 return;
             }
 
@@ -546,7 +557,6 @@ const setupChannelSubscription = (onSubscribed = null) => {
             lastMessage.content = event.content;
 
             if (event.isComplete) {
-                // console.log("✅ Message complete");
                 streaming.value = false;
                 updateTitle();
             }

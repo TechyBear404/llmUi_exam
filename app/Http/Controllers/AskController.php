@@ -58,13 +58,17 @@ class AskController extends Controller
             ]);
 
             // Check if the last message is the same as the current one
-            $lastUserMessage = $conversation->messages()
-                ->where('role', 'user')
-                ->latest()
+            $lastMessage = $conversation->messages()
+                ->orderBy('created_at', 'desc')
                 ->first();
 
+            logger()->info('lastUserMessage', [
+                'lastMessage' => $lastMessage,
+                'message' => $validated['message']
+            ]);
+
             // Only save user message if it's different from the last one
-            if (!$lastUserMessage || $lastUserMessage->content !== $validated['message']) {
+            if (!$lastMessage || $lastMessage->content !== $validated['message']) {
                 $conversation->messages()->create([
                     'content' => $validated['message'],
                     'role'    => 'user',
@@ -82,7 +86,6 @@ class AskController extends Controller
                     'content' => $msg->content,
                 ])
                 ->toArray();
-
 
             // Create empty assistant message
             $assistantMessage = $conversation->messages()->create([
@@ -116,6 +119,14 @@ class AskController extends Controller
                         $lastBroadcastTime = $currentTime;
                     }
                 }
+
+                $totalTokens = $response->usage->total_tokens ?? 0;
+                logger()->info('totalTokens', [
+                    'totalTokens' => $totalTokens
+                ]);
+                if ($totalTokens) {
+                    $conversation->update(['total_tokens' => $totalTokens]);
+                }
             }
 
             // Update the assistant message with complete response
@@ -128,9 +139,9 @@ class AskController extends Controller
                 true
             ));
 
+            // Return the updated conversation with messages
             return response()->json([
-                'status' => 'success',
-                'message' => $assistantMessage
+                'conversation' => $conversation->fresh()->load('messages')
             ]);
         } catch (\Exception $e) {
             Log::error('Error in stream message', [
