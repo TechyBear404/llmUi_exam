@@ -449,13 +449,20 @@ const sendMessage = async () => {
     streaming.value = true;
     error.value = null;
 
-    localMessages.value.push({
-        id: `temp-${Date.now()}`,
-        role: "user",
-        content: messageContent,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-    });
+    // Only add the user message if it's not a resend (not already in messages)
+    const isResend = localMessages.value.some(
+        msg => msg.role === 'user' && msg.content === messageContent
+    );
+
+    if (!isResend) {
+        localMessages.value.push({
+            id: `temp-${Date.now()}`,
+            role: "user",
+            content: messageContent,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        });
+    }
 
     const assistantMessageId = `temp-assistant-${Date.now()}`;
     const tempAssistantMessage = {

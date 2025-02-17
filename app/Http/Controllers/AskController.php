@@ -57,11 +57,19 @@ class AskController extends Controller
                 'model' => $validated['model']
             ]);
 
-            // Save user message first
-            $conversation->messages()->create([
-                'content' => $validated['message'],
-                'role'    => 'user',
-            ]);
+            // Check if the last message is the same as the current one
+            $lastUserMessage = $conversation->messages()
+                ->where('role', 'user')
+                ->latest()
+                ->first();
+
+            // Only save user message if it's different from the last one
+            if (!$lastUserMessage || $lastUserMessage->content !== $validated['message']) {
+                $conversation->messages()->create([
+                    'content' => $validated['message'],
+                    'role'    => 'user',
+                ]);
+            }
 
             $channelName = "chat.{$conversation->id}";
 
