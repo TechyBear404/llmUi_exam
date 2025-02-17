@@ -535,7 +535,7 @@ const setupChannelSubscription = (onSubscribed = null) => {
                 "Échec de la connexion au chat. Veuillez actualiser la page.";
         })
         .listen(".message.streamed", (event) => {
-            console.log("📨 Message received:", event);
+            // console.log("📨 Message received:", event);
 
             if (event.error) {
                 console.error("❌ Error received:", event.error);

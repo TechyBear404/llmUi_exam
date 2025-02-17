@@ -80,12 +80,24 @@ class AskController extends Controller
             // Get conversation history
             $messages = $conversation->messages()
                 ->orderBy('created_at', 'asc')
-                ->get()
-                ->map(fn($msg) => [
-                    'role'    => $msg->role,
-                    'content' => $msg->content,
-                ])
-                ->toArray();
+                ->get();
+            $maxContextLength = $conversation->max_contecxt_length;
+            $currentContextLength = $conversation->context_length;
+
+            $getMessageLength = function ($msg) {
+                return str_word_count($msg->content);
+            };
+
+            while ($currentContextLength > $maxContextLength && $messages->count() > 0) {
+                $oldestMessage = $messages->shift(); // Récupère et supprime le premier message
+                $messageLength = $getMessageLength($oldestMessage);
+                $currentContextLength -= $messageLength;
+            }
+
+            $messages = $messages->map(fn($msg) => [
+                'role'    => $msg->role,
+                'content' => $msg->content,
+            ])->toArray();
 
             // Create empty assistant message
             $assistantMessage = $conversation->messages()->create([
@@ -120,12 +132,14 @@ class AskController extends Controller
                     }
                 }
 
-                $totalTokens = $response->usage->total_tokens ?? 0;
+
+                $totalTokens = $response->usage->totalTokens ?? 0;
                 logger()->info('totalTokens', [
+                    'response' => $response,
                     'totalTokens' => $totalTokens
                 ]);
                 if ($totalTokens) {
-                    $conversation->update(['total_tokens' => $totalTokens]);
+                    $conversation->update(['context_length' => $totalTokens]);
                 }
             }
 

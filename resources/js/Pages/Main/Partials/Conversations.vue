@@ -78,7 +78,7 @@ const props = defineProps({
     },
 });
 
-console.log("Conversations", props.conversations);
+// console.log("Conversations", props.conversations);
 
 const getLastMessageDate = (conversation) => {
     const lastMessage =
