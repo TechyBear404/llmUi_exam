@@ -156,11 +156,6 @@ const selectedModelName = computed(() => {
     const selectedModel = props.models.find(
         (model) => model.id === props.modelValue
     );
-    // log models ordered by context_length
-    console.log(
-        "models ordered by context_length",
-        props.models.sort((a, b) => a.context_length - b.context_length)
-    );
     return selectedModel ? selectedModel.name : props.placeholder;
 });
 </script>

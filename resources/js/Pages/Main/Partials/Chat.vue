@@ -297,8 +297,14 @@
             class="shrink-0 p-4 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 relative z-10 shadow-[0_-1px_3px_rgba(0,0,0,0.1)]"
         >
             <form @submit.prevent="sendMessage" class="space-y-2">
-                <div v-if="model.supports_image" class="flex items-center gap-2 text-sm text-muted-foreground">
-                    <font-awesome-icon icon="fa-solid fa-image" class="w-4 h-4" />
+                <div
+                    v-if="model.supports_image"
+                    class="flex items-center gap-2 text-sm text-muted-foreground"
+                >
+                    <font-awesome-icon
+                        icon="fa-solid fa-image"
+                        class="w-4 h-4"
+                    />
                     <span>Ce modèle supporte l'envoi d'images</span>
                 </div>
                 <div class="flex space-x-2">
@@ -459,8 +465,6 @@ const sendMessage = async () => {
     error.value = null;
 
     // Only add the user message if it's not same as last user message
-    console.log(localMessages.value);
-    console.log(localMessages.value);
     const lastMessage = localMessages.value[localMessages.value.length - 1];
 
     if (
@@ -500,7 +504,7 @@ const sendMessage = async () => {
             route("conversations.ask", props.conversation.id),
             {
                 message: messageContent,
-                model: props.model,
+                model: props.model.id || undefined
             }
         );
 

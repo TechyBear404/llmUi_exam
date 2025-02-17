@@ -37,21 +37,23 @@ class ChatService
                 'Authorization' => 'Bearer ' . $this->apiKey,
             ])->get($this->baseUrl . '/models');
 
-            return collect($response->json()['data'])
-                ->sortBy('name')
-                ->map(function ($model) {
-                    return [
-                        'id' => $model['id'],
-                        'name' => $model['name'],
-                        'context_length' => $model['context_length'],
-                        'max_completion_tokens' => $model['top_provider']['max_completion_tokens'],
-                        'pricing' => $model['pricing'],
-                        'supports_image' => 'text+image->text' === $model['architecture']['modality'],
-                    ];
-                })
-                ->values()
-                ->all()
-            ;
+            $models = array_map(function ($model) {
+                return [
+                    'id' => $model['id'],
+                    'name' => $model['name'],
+                    'context_length' => $model['context_length'],
+                    'max_completion_tokens' => $model['top_provider']['max_completion_tokens'],
+                    'pricing' => $model['pricing'],
+                    'supports_image' => 'text+image->text' === $model['architecture']['modality'],
+                ];
+            }, $response->json()['data']);
+
+            // Sort the array by name
+            usort($models, function ($a, $b) {
+                return strnatcmp(strtolower($a['name']), strtolower($b['name']));
+            });
+
+            return $models;
         });
     }
 

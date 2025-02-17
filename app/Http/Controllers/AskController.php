@@ -19,6 +19,7 @@ class AskController extends Controller
         $this->authorize('viewAny', Conversation::class);
 
         $models = (new ChatService())->getModels();
+
         $selectedModel = ChatService::DEFAULT_MODEL;
         $conversations = auth()->user()->conversations()
             ->with('messages')
