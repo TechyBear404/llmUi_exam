@@ -143,24 +143,97 @@
                                         >
                                             Copié
                                         </div>
-                                        <div
-                                            class="cursor-pointer"
-                                            @click="
-                                                handleCopy(
-                                                    message.content,
-                                                    message.id
-                                                )
-                                            "
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger>
+                                                    <div
+                                                        class="cursor-pointer"
+                                                        @click="
+                                                            handleCopy(
+                                                                message.content,
+                                                                message.id
+                                                            )
+                                                        "
+                                                    >
+                                                        <font-awesome-icon
+                                                            :icon="
+                                                                copiedStates.get(
+                                                                    message.id
+                                                                )
+                                                                    ? 'fa-solid fa-clipboard-check'
+                                                                    : 'fa-solid fa-clipboard'
+                                                            "
+                                                            class="w-4 h-4"
+                                                        />
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Copier le message</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                        <TooltipProvider
+                                            v-if="message.role === 'user'"
                                         >
-                                            <font-awesome-icon
-                                                :icon="
-                                                    copiedStates.get(message.id)
-                                                        ? 'fa-solid fa-clipboard-check'
-                                                        : 'fa-solid fa-clipboard'
-                                                "
-                                                class="w-4 h-4"
-                                            />
-                                        </div>
+                                            <Tooltip>
+                                                <TooltipTrigger>
+                                                    <div
+                                                        class="transition-colors duration-200 cursor-pointer"
+                                                        :class="[
+                                                            streaming
+                                                                ? 'opacity-50 cursor-not-allowed'
+                                                                : '',
+                                                        ]"
+                                                        @click="
+                                                            !streaming &&
+                                                                resendMessage(
+                                                                    message.content
+                                                                )
+                                                        "
+                                                    >
+                                                        <font-awesome-icon
+                                                            icon="fa-solid fa-arrow-rotate-right"
+                                                            class="w-4 h-4"
+                                                            :class="{
+                                                                'animate-spin':
+                                                                    streaming,
+                                                            }"
+                                                        />
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>
+                                                        {{
+                                                            streaming
+                                                                ? "En cours d'envoi..."
+                                                                : "Renvoyer le message"
+                                                        }}
+                                                    </p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger>
+                                                    <div
+                                                        class="transition-colors duration-200 cursor-pointer hover:text-destructive"
+                                                        @click="
+                                                            confirmDeleteMessage(
+                                                                message
+                                                            )
+                                                        "
+                                                    >
+                                                        <font-awesome-icon
+                                                            icon="fa-solid fa-trash"
+                                                            class="w-4 h-4"
+                                                        />
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Supprimer le message</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
                                     </div>
                                 </div>
                             </CardContent>
@@ -178,6 +251,37 @@
                 </div>
             </div>
         </ScrollArea>
+
+        <!-- Dialog de confirmation de suppression -->
+        <AlertDialog :open="showDeleteDialog">
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle
+                        >Confirmer la suppression</AlertDialogTitle
+                    >
+                    <AlertDialogDescription>
+                        Êtes-vous sûr de vouloir supprimer ce message ? Cette
+                        action est irréversible.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel @click="showDeleteDialog = false"
+                        >Annuler</AlertDialogCancel
+                    >
+                    <AlertDialogAction
+                        @click="deleteMessage"
+                        class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                        <font-awesome-icon
+                            v-if="deletingMessage"
+                            icon="fa-solid fa-circle-notch"
+                            class="w-4 h-4 mr-2 animate-spin"
+                        />
+                        Supprimer
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
 
         <Button
             v-show="showScrollButton"
@@ -235,7 +339,15 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogAction,
+    AlertDialogCancel,
 } from "@/Components/ui/alert-dialog";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/Components/ui/tooltip";
 import "highlight.js/styles/github.css";
 import { router, useForm } from "@inertiajs/vue3";
 
@@ -263,6 +375,11 @@ const channelSubscription = ref(null);
 const showScrollButton = ref(false);
 const isNearBottom = ref(true);
 const copiedStates = ref(new Map());
+const messageToDelete = ref(null);
+const deletingMessage = ref(false);
+const showDeleteDialog = ref(false);
+
+const deleteForm = useForm({});
 
 const scrollToBottom = () => {
     if (scrollArea.value) {
@@ -490,6 +607,44 @@ const updateTitle = async () => {
             console.error("Error updating title:", err);
         }
     }
+};
+
+const resendMessage = async (messageContent) => {
+    if (streaming.value) return;
+    newMessage.value = messageContent;
+    await sendMessage();
+};
+
+const confirmDeleteMessage = (message) => {
+    messageToDelete.value = message;
+    showDeleteDialog.value = true;
+};
+
+const deleteMessage = () => {
+    if (!messageToDelete.value) {
+        console.error("No message to delete");
+        return;
+    }
+
+    deletingMessage.value = true;
+    deleteForm.delete(route("messages.destroy", messageToDelete.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            // Supprimer le message localement
+            localMessages.value = localMessages.value.filter(
+                (m) => m.id !== messageToDelete.value.id
+            );
+            showDeleteDialog.value = false;
+            messageToDelete.value = null;
+        },
+        onError: (errors) => {
+            error.value =
+                errors.message || "Échec de la suppression du message";
+        },
+        onFinish: () => {
+            deletingMessage.value = false;
+        },
+    });
 };
 
 watch(

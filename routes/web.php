@@ -4,6 +4,7 @@ use App\Http\Controllers\ConversationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AskController;
 use App\Http\Controllers\CustomInstructionController;
+use App\Http\Controllers\MessageController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -39,6 +40,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/custom-instructions', [CustomInstructionController::class, 'store'])->name('custom-instructions.store');
     Route::get('/custom-instructions/{customInstruction}', [CustomInstructionController::class, 'show'])->name('custom-instructions.show');
     Route::put('/custom-instructions/{customInstruction}', [CustomInstructionController::class, 'update'])->name('custom-instructions.update');
+
+    // Routes pour les messages
+    Route::delete('/messages/{message}', [MessageController::class, 'destroy'])->name('messages.destroy');
 });
 
 require __DIR__ . '/auth.php';

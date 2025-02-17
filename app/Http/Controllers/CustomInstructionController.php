@@ -14,6 +14,8 @@ class CustomInstructionController extends Controller
 
     public function index()
     {
+        $this->authorize('viewAny', CustomInstruction::class);
+        
         $instructions = auth()->user()->customInstructions()
             ->latest()
             ->get();
@@ -25,11 +27,15 @@ class CustomInstructionController extends Controller
 
     public function create()
     {
+        $this->authorize('create', CustomInstruction::class);
+        
         return Inertia::render('CustomInstructions/Create');
     }
 
     public function store(Request $request)
     {
+        $this->authorize('create', CustomInstruction::class);
+        
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'user_background' => 'nullable|string',
@@ -55,7 +61,8 @@ class CustomInstructionController extends Controller
 
     public function show(CustomInstruction $customInstruction)
     {
-
+        $this->authorize('view', $customInstruction);
+        
         return Inertia::render('CustomInstructions/Show', [
             'instruction' => $customInstruction
         ]);
@@ -63,7 +70,8 @@ class CustomInstructionController extends Controller
 
     public function update(Request $request, CustomInstruction $customInstruction)
     {
-
+        $this->authorize('update', $customInstruction);
+        
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'user_background' => 'nullable|string',
@@ -89,7 +97,8 @@ class CustomInstructionController extends Controller
 
     public function destroy(CustomInstruction $customInstruction)
     {
-
+        $this->authorize('delete', $customInstruction);
+        
         $customInstruction->delete();
 
         return redirect()->route('custom-instructions.index')
@@ -98,6 +107,8 @@ class CustomInstructionController extends Controller
 
     public function getList()
     {
+        $this->authorize('viewAny', CustomInstruction::class);
+        
         return response()->json(
             auth()->user()->customInstructions()
                 ->select('id', 'title')

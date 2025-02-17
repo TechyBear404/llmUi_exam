@@ -8,15 +8,20 @@ use App\Services\ChatService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class ConversationController extends Controller
 {
+    use AuthorizesRequests;
+
     public function __construct(
         private ChatService $chatService
     ) {}
 
     public function store(Request $request)
     {
+        $this->authorize('create', Conversation::class);
+
         $validated = $request->validate([
             'model_id' => 'required|string',
         ]);
@@ -38,7 +43,7 @@ class ConversationController extends Controller
 
     public function show(Conversation $conversation)
     {
-        abort_if($conversation->user_id !== Auth::id(), 403);
+        $this->authorize('view', $conversation);
 
         auth()->user()->update(['last_selected_conversation_id' => $conversation->id]);
 
@@ -52,7 +57,7 @@ class ConversationController extends Controller
 
     public function destroy(Conversation $conversation)
     {
-        abort_if($conversation->user_id !== Auth::id(), 403);
+        $this->authorize('delete', $conversation);
 
         $conversation->delete();
         return redirect()->route('ask.index');
@@ -60,6 +65,8 @@ class ConversationController extends Controller
 
     public function update(Request $request, Conversation $conversation)
     {
+        $this->authorize('update', $conversation);
+
         $validated = $request->validate([
             'model' => 'nullable|array',
             'title' => 'nullable|string',
@@ -95,6 +102,8 @@ class ConversationController extends Controller
 
     public function updateUserModel(Request $request, Conversation $conversation)
     {
+        $this->authorize('update', $conversation);
+
         $validated = $request->validate([
             'model' => 'nullable|array',
         ]);
@@ -107,7 +116,7 @@ class ConversationController extends Controller
 
     public function updateCustomInstruction(Conversation $conversation)
     {
-        abort_if($conversation->user_id !== Auth::id(), 403);
+        $this->authorize('update', $conversation);
 
         $conversation->update(['custom_instruction_id' => request('custom_instruction_id')]);
 
@@ -116,10 +125,7 @@ class ConversationController extends Controller
 
     public function updateTitle(Conversation $conversation)
     {
-        abort_if($conversation->user_id !== Auth::id(), 403);
-
-        // $conversation = Conversation::find($conversation->id)->with('messages')->first();
-        // dd($conversation);
+        $this->authorize('update', $conversation);
 
         try {
             $title = $this->chatService->makeTitle($conversation);

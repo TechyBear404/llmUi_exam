@@ -2,8 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Conversation;
 use App\Models\CustomInstruction;
+use App\Models\Message;
+use App\Policies\ConversationPolicy;
 use App\Policies\CustomInstructionPolicy;
+use App\Policies\MessagePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -15,7 +19,9 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        // CustomInstruction::class => CustomInstructionPolicy::class,
+        Message::class => MessagePolicy::class,
+        CustomInstruction::class => CustomInstructionPolicy::class,
+        Conversation::class => ConversationPolicy::class,
     ];
 
     public function boot(): void

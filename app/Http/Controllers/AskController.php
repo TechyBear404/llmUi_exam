@@ -8,11 +8,16 @@ use App\Services\ChatService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class AskController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index()
     {
+        $this->authorize('viewAny', Conversation::class);
+        
         $models = (new ChatService())->getModels();
         $selectedModel = ChatService::DEFAULT_MODEL;
         $conversations = auth()->user()->conversations()
@@ -20,22 +25,27 @@ class AskController extends Controller
             ->latest()
             ->get();
         $customInstructions = auth()->user()->customInstructions()->get();
+        
         if (auth()->user()->last_selected_conversation_id) {
             $currentConversation = Conversation::find(auth()->user()->last_selected_conversation_id);
+            if ($currentConversation) {
+                $this->authorize('view', $currentConversation);
+            }
         }
-
 
         return Inertia::render('Main/Index', [
             'models' => $models,
             'selectedModel' => $selectedModel,
             'conversations' => $conversations,
             'customInstructions' => $customInstructions,
-            'currentConversation' => $currentConversation->load('messages'),
+            'currentConversation' => isset($currentConversation) ? $currentConversation->load('messages') : null,
         ]);
     }
 
     public function streamMessage(Conversation $conversation, Request $request)
     {
+        $this->authorize('update', $conversation);
+        
         $validated = $request->validate([
             'message' => 'required|string',
             'model'   => 'nullable|string',
