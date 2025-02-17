@@ -7,7 +7,9 @@
                         icon="fa-solid fa-message"
                         class="mb-2 text-4xl text-muted-foreground"
                     />
-                    <p class="text-muted-foreground">No conversations yet</p>
+                    <p class="text-muted-foreground">
+                        Aucune conversation pour le moment
+                    </p>
                 </CardContent>
             </Card>
         </div>
@@ -93,7 +95,8 @@ const selectConversation = (conversation) => {
 };
 
 const deleteConversation = async (conversation) => {
-    if (!confirm("Are you sure you want to delete this conversation?")) return;
+    if (!confirm("Êtes-vous sûr de vouloir supprimer cette conversation ?"))
+        return;
 
     try {
         router.delete(route("conversations.destroy", conversation));

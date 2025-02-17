@@ -12,7 +12,7 @@
                 v-model="form.user_background"
                 rows="3"
                 placeholder="Décrivez votre parcours..."
-                class="w-full resize-none bg-background"
+                class="w-full resize-none bg-muted/50"
             />
             <div
                 v-if="form.errors.user_background"
@@ -31,7 +31,7 @@
                     v-model="newInterest"
                     @keydown.enter.prevent="addInterest"
                     placeholder="Tapez et appuyez sur Entrée pour ajouter"
-                    class="bg-background"
+                    class="bg-muted/50"
                 />
                 <div class="flex flex-wrap gap-2">
                     <Badge
@@ -70,10 +70,10 @@
                     <Input
                         v-model="level.subject"
                         placeholder="Sujet"
-                        class="flex-1 bg-background"
+                        class="flex-1 bg-muted/50"
                     />
                     <Select v-model="level.level" class="">
-                        <SelectTrigger class="w-48 bg-background">
+                        <SelectTrigger class="w-48 bg-muted/50">
                             <SelectValue placeholder="Niveau" />
                         </SelectTrigger>
                         <SelectContent>
@@ -98,7 +98,7 @@
                     @click="addKnowledgeLevel"
                     variant="outline"
                     size="sm"
-                    class="w-full"
+                    class="w-full bg-muted/50"
                 >
                     <font-awesome-icon icon="fa-solid fa-plus" class="mr-2" />
                     Ajouter un Niveau
@@ -120,7 +120,7 @@
                 v-model="form.user_goals"
                 rows="3"
                 placeholder="Décrivez vos objectifs..."
-                class="w-full resize-none bg-background"
+                class="w-full resize-none bg-muted/50"
             />
             <div v-if="form.errors.user_goals" class="text-sm text-destructive">
                 {{ form.errors.user_goals }}

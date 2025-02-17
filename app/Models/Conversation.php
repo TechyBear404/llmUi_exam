@@ -3,17 +3,23 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Conversation extends Model
 {
-    protected $fillable = ['title', 'model_id', 'custom_instruction_id', 'user_id'];
+    protected $fillable = [
+        'title',
+        'user_id',
+        'model_id',
+        'custom_instruction_id'
+    ];
 
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function customInstruction()
+    public function customInstruction(): BelongsTo
     {
         return $this->belongsTo(CustomInstruction::class);
     }

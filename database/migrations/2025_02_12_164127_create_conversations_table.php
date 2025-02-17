@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('title')->default('Conversation en cours ...');
             $table->string('model_id');
             $table->foreignId('custom_instruction_id')->nullable()->constrained()->onDelete('set null');
+            $table->integer('context_length')->default(0);
+            $table->integer('max_contecxt_length')->default(0);
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });

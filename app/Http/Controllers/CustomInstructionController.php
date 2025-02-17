@@ -6,6 +6,7 @@ use App\Models\CustomInstruction;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 
 class CustomInstructionController extends Controller
 {
@@ -31,20 +32,19 @@ class CustomInstructionController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'user_background' => 'required|string',
+            'user_background' => 'nullable|string',
             'user_interests' => 'nullable|array',
             'knowledge_levels' => 'nullable|array',
             'knowledge_levels.*.subject' => 'required|string',
             'knowledge_levels.*.level' => 'required|string|in:beginner,intermediate,advanced,expert',
             'user_goals' => 'nullable|string',
-            'assistant_background' => 'required|string',
+            'assistant_background' => 'nullable|string',
             'assistant_tone' => 'required|string|in:friendly,professional,casual,formal,technical,educational',
             'response_style' => 'required|string|in:normal,concise,detailed,formal,casual',
             'response_format' => 'required|string|in:paragraphs,bullet_points,step_by_step,mixed',
-            'custom_commands' => 'nullable|array',
-            'custom_commands.*.name' => 'required|string',
-            'custom_commands.*.description' => 'required|string',
-            'custom_commands.*.template' => 'required|string',
+            'custom_commands' => 'present|array',
+            'custom_commands.*.name' => 'required_with:custom_commands|string',
+            'custom_commands.*.description' => 'required_with:custom_commands|string',
         ]);
 
         $instruction = auth()->user()->customInstructions()->create($validated);
@@ -66,20 +66,19 @@ class CustomInstructionController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'user_background' => 'required|string',
+            'user_background' => 'nullable|string',
             'user_interests' => 'nullable|array',
             'knowledge_levels' => 'nullable|array',
             'knowledge_levels.*.subject' => 'required|string',
             'knowledge_levels.*.level' => 'required|string|in:beginner,intermediate,advanced,expert',
             'user_goals' => 'nullable|string',
-            'assistant_background' => 'required|string',
+            'assistant_background' => 'nullable|string',
             'assistant_tone' => 'required|string|in:friendly,professional,casual,formal,technical,educational',
             'response_style' => 'required|string|in:normal,concise,detailed,formal,casual',
             'response_format' => 'required|string|in:paragraphs,bullet_points,step_by_step,mixed',
-            'custom_commands' => 'nullable|array',
-            'custom_commands.*.name' => 'required|string',
-            'custom_commands.*.description' => 'required|string',
-            'custom_commands.*.template' => 'required|string',
+            'custom_commands' => 'present|array',
+            'custom_commands.*.name' => 'required_with:custom_commands|string',
+            'custom_commands.*.description' => 'required_with:custom_commands|string',
         ]);
 
         $customInstruction->update($validated);
@@ -95,5 +94,15 @@ class CustomInstructionController extends Controller
 
         return redirect()->route('custom-instructions.index')
             ->with('success', 'Instruction personnalisée supprimée avec succès.');
+    }
+
+    public function getList()
+    {
+        return response()->json(
+            auth()->user()->customInstructions()
+                ->select('id', 'title')
+                ->latest()
+                ->get()
+        );
     }
 }

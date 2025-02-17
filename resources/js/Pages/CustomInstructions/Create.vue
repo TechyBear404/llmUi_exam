@@ -27,7 +27,7 @@
                                 <Input
                                     v-model="form.title"
                                     placeholder="Donnez un titre à cette instruction"
-                                    class="w-full bg-background"
+                                    class="w-full bg-muted/50"
                                 />
                                 <div
                                     v-if="form.errors.title"
@@ -101,8 +101,8 @@ const form = useForm({
     assistant_background: "",
     assistant_tone: "friendly",
     response_style: "normal",
-    response_format: "mixed",
-    custom_commands: [],
+    response_format: "paragraphs",
+    custom_commands: [], // Initialisation du tableau vide
 });
 
 const submit = () => {

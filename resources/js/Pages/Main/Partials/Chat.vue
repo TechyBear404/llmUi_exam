@@ -3,12 +3,12 @@
         <AlertDialog :open="!!error">
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Error</AlertDialogTitle>
+                    <AlertDialogTitle>Erreur</AlertDialogTitle>
                     <AlertDialogDescription>{{ error }}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <Button variant="outline" @click="error = null"
-                        >Dismiss</Button
+                        >Fermer</Button
                     >
                 </AlertDialogFooter>
             </AlertDialogContent>
@@ -16,7 +16,62 @@
 
         <ScrollArea class="flex-1 min-h-0" ref="scrollArea">
             <div class="px-4">
-                <div class="py-4 m-auto space-y-4" ref="messagesContainer">
+                <div
+                    v-if="localMessages.length === 0"
+                    class="flex items-center justify-center h-full min-h-[calc(100vh-16rem)]"
+                >
+                    <div class="max-w-lg px-4 space-y-6 text-center">
+                        <div class="space-y-2">
+                            <font-awesome-icon
+                                icon="fa-solid fa-comments"
+                                class="text-5xl text-primary/80"
+                            />
+                            <h2 class="text-2xl font-semibold text-foreground">
+                                Bienvenue dans votre nouvelle conversation
+                            </h2>
+                            <p class="text-muted-foreground">
+                                Posez votre question ou décrivez ce dont vous
+                                avez besoin. L'assistant est là pour vous aider
+                                !
+                            </p>
+                        </div>
+                        <div
+                            class="p-4 space-y-2 text-sm rounded-lg bg-muted/50"
+                        >
+                            <p class="font-medium text-foreground">
+                                Suggestions :
+                            </p>
+                            <ul class="space-y-2 text-muted-foreground">
+                                <li class="flex items-center gap-2">
+                                    <font-awesome-icon
+                                        icon="fa-solid fa-lightbulb"
+                                        class="text-primary/80"
+                                    />
+                                    "Peux-tu m'expliquer comment fonctionne..."
+                                </li>
+                                <li class="flex items-center gap-2">
+                                    <font-awesome-icon
+                                        icon="fa-solid fa-code"
+                                        class="text-primary/80"
+                                    />
+                                    "Aide-moi à résoudre ce problème de code..."
+                                </li>
+                                <li class="flex items-center gap-2">
+                                    <font-awesome-icon
+                                        icon="fa-solid fa-circle-question"
+                                        class="text-primary/80"
+                                    />
+                                    "J'ai besoin d'aide pour..."
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div
+                    v-else
+                    class="py-4 m-auto space-y-4"
+                    ref="messagesContainer"
+                >
                     <div
                         v-for="message in localMessages"
                         :key="message.id"
@@ -53,7 +108,7 @@
                                         icon="fa-solid fa-circle-notch"
                                         class="w-4 h-4 animate-spin"
                                     />
-                                    <span>AI is thinking...</span>
+                                    <span>L'IA réfléchit...</span>
                                 </div>
                                 <template v-else>
                                     <div
@@ -140,8 +195,8 @@
             <form @submit.prevent="sendMessage" class="flex space-x-2">
                 <Textarea
                     v-model="newMessage"
-                    class="flex-1"
-                    placeholder="Type your message..."
+                    class="flex-1 bg-muted/50"
+                    placeholder="Tapez votre message..."
                     :disabled="streaming"
                     @keydown="handleKeyDown"
                 />
@@ -277,7 +332,6 @@ const sendMessage = async () => {
     streaming.value = true;
     error.value = null;
 
-    // Add user message immediately to local messages
     localMessages.value.push({
         id: `temp-${Date.now()}`,
         role: "user",
@@ -286,7 +340,6 @@ const sendMessage = async () => {
         updated_at: new Date().toISOString(),
     });
 
-    // Add a placeholder for assistant's response
     const assistantMessageId = `temp-assistant-${Date.now()}`;
     const tempAssistantMessage = {
         id: assistantMessageId,
@@ -302,12 +355,10 @@ const sendMessage = async () => {
     scrollToBottom();
 
     try {
-        // Wait for channel subscription to be ready
         await new Promise((resolve) => {
             setupChannelSubscription(() => resolve());
         });
 
-        // Now send the message
         await axios.post(route("conversations.ask", props.conversation.id), {
             message: messageContent,
             model: props.model,
@@ -316,7 +367,7 @@ const sendMessage = async () => {
         console.error("Error sending message:", err);
         error.value =
             err.response?.data?.message ||
-            "Failed to send message. Please try again.";
+            "Échec de l'envoi du message. Veuillez réessayer.";
         streaming.value = false;
         // Remove the loading message on error
         localMessages.value = localMessages.value.filter(
@@ -338,16 +389,17 @@ const setupChannelSubscription = (onSubscribed = null) => {
 
     channelSubscription.value = window.Echo.private(channel)
         .subscribed(() => {
-            console.log("✅ Successfully subscribed to channel:", channel);
+            // console.log("✅ Successfully subscribed to channel:", channel);
             if (onSubscribed) onSubscribed();
         })
         .error((error) => {
             console.error("❌ Channel subscription error:", error);
             streaming.value = false;
-            error.value = "Failed to connect to chat. Please refresh the page.";
+            error.value =
+                "Échec de la connexion au chat. Veuillez actualiser la page.";
         })
         .listen(".message.streamed", (event) => {
-            console.log("📨 Message received:", event);
+            // console.log("📨 Message received:", event);
 
             if (event.error) {
                 console.error("❌ Error received:", event.error);
@@ -362,7 +414,7 @@ const setupChannelSubscription = (onSubscribed = null) => {
             const lastMessage =
                 localMessages.value[localMessages.value.length - 1];
             if (!lastMessage || lastMessage.role !== "assistant") {
-                console.log("⚠️ No assistant message to update");
+                // console.log("⚠️ No assistant message to update");
                 return;
             }
 
@@ -370,7 +422,7 @@ const setupChannelSubscription = (onSubscribed = null) => {
             lastMessage.content = event.content;
 
             if (event.isComplete) {
-                console.log("✅ Message complete");
+                // console.log("✅ Message complete");
                 streaming.value = false;
                 updateTitle();
             }
@@ -381,11 +433,9 @@ const setupChannelSubscription = (onSubscribed = null) => {
         });
 };
 
-// Setup initial channel subscription
 onMounted(() => {
     setupChannelSubscription();
 
-    // Add scroll event listener
     if (scrollArea.value) {
         const viewport = scrollArea.value.$el.querySelector(
             "[data-radix-scroll-area-viewport]"
@@ -397,7 +447,6 @@ onMounted(() => {
     }
 });
 
-// Cleanup subscription on unmount
 onBeforeUnmount(() => {
     if (channelSubscription.value) {
         window.Echo.leave(`chat.${props.conversation.id}`);
@@ -431,9 +480,7 @@ const updateTitle = async () => {
                 {},
                 {
                     preserveScroll: true,
-                    onSuccess: () => {
-                        // Title updated successfully
-                    },
+                    onSuccess: () => {},
                     onError: (errors) => {
                         console.error("Error updating title:", errors);
                     },
@@ -445,7 +492,6 @@ const updateTitle = async () => {
     }
 };
 
-// Reset error when conversation changes
 watch(
     () => props.conversation,
     () => {
@@ -469,7 +515,6 @@ watch(
     () => props.conversation,
     async (newConv, oldConv) => {
         error.value = null;
-        // Only update messages if it's a different conversation
         if (!oldConv || newConv.id !== oldConv.id) {
             localMessages.value = [...newConv.messages];
             nextTick(() => {

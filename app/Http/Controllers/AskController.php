@@ -19,11 +19,18 @@ class AskController extends Controller
             ->with('messages')
             ->latest()
             ->get();
+        $customInstructions = auth()->user()->customInstructions()->get();
+        if (auth()->user()->last_selected_conversation_id) {
+            $currentConversation = Conversation::find(auth()->user()->last_selected_conversation_id);
+        }
+
 
         return Inertia::render('Main/Index', [
             'models' => $models,
             'selectedModel' => $selectedModel,
             'conversations' => $conversations,
+            'customInstructions' => $customInstructions,
+            'currentConversation' => $currentConversation->load('messages'),
         ]);
     }
 
@@ -39,7 +46,7 @@ class AskController extends Controller
                 'conversation_id' => $conversation->id,
                 'model' => $validated['model']
             ]);
-            
+
             // Save user message first
             $userMessage = $conversation->messages()->create([
                 'content' => $validated['message'],
@@ -58,6 +65,7 @@ class AskController extends Controller
                 ])
                 ->toArray();
 
+
             // Create empty assistant message
             $assistantMessage = $conversation->messages()->create([
                 'content' => '',
@@ -68,6 +76,7 @@ class AskController extends Controller
             $stream = (new ChatService())->streamConversation(
                 messages: $messages,
                 model: $conversation->model ?? $request->user()->last_used_model ?? ChatService::DEFAULT_MODEL,
+                conversation: $conversation,
             );
 
             $fullResponse = '';
@@ -105,7 +114,6 @@ class AskController extends Controller
                 'status' => 'success',
                 'message' => $assistantMessage
             ]);
-
         } catch (\Exception $e) {
             Log::error('Error in stream message', [
                 'error' => $e->getMessage(),

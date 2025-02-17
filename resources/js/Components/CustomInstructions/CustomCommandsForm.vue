@@ -6,9 +6,9 @@
 
         <div class="space-y-4">
             <div
-                v-for="(command, index) in form.custom_commands"
+                v-for="(command, index) in form.custom_commands || []"
                 :key="index"
-                class="p-4 space-y-4 border rounded-lg bg-background/50"
+                class="p-4 space-y-4 border rounded-lg bg-muted/50/50"
             >
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div class="space-y-2">
@@ -18,7 +18,7 @@
                         <Input
                             v-model="command.name"
                             placeholder="Nom de la commande"
-                            class="w-full bg-background"
+                            class="w-full bg-muted/50"
                         />
                     </div>
                     <div class="space-y-2">
@@ -28,20 +28,9 @@
                         <Input
                             v-model="command.description"
                             placeholder="Description"
-                            class="w-full bg-background"
+                            class="w-full bg-muted/50"
                         />
                     </div>
-                </div>
-                <div class="space-y-2">
-                    <label class="text-sm font-medium text-muted-foreground"
-                        >Template</label
-                    >
-                    <Textarea
-                        v-model="command.template"
-                        placeholder="Template de la commande"
-                        rows="3"
-                        class="w-full resize-none bg-background"
-                    />
                 </div>
                 <div class="flex justify-end">
                     <Button
@@ -92,10 +81,14 @@ const props = defineProps({
 });
 
 const addCommand = () => {
+    // Initialiser le tableau s'il n'existe pas
+    if (!props.form.custom_commands) {
+        props.form.custom_commands = [];
+    }
+
     props.form.custom_commands.push({
         name: "",
         description: "",
-        template: "",
     });
 };
 

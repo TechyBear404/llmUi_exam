@@ -12,7 +12,7 @@
                 <Textarea
                     v-model="form.assistant_background"
                     placeholder="Description du contexte de l'assistant"
-                    class="w-full resize-none bg-background"
+                    class="w-full resize-none bg-muted/50"
                     rows="3"
                 />
                 <div
@@ -28,7 +28,7 @@
                     >Ton de l'Assistant</label
                 >
                 <Select v-model="form.assistant_tone">
-                    <SelectTrigger class="bg-background">
+                    <SelectTrigger class="bg-muted/50">
                         <SelectValue placeholder="Sélectionner le ton" />
                     </SelectTrigger>
                     <SelectContent>
@@ -55,7 +55,7 @@
                     >Style de Réponse</label
                 >
                 <Select v-model="form.response_style">
-                    <SelectTrigger class="bg-background">
+                    <SelectTrigger class="bg-muted/50">
                         <SelectValue placeholder="Sélectionner le style" />
                     </SelectTrigger>
                     <SelectContent>
@@ -79,7 +79,7 @@
                     >Format de Réponse</label
                 >
                 <Select v-model="form.response_format">
-                    <SelectTrigger class="bg-background">
+                    <SelectTrigger class="bg-muted/50">
                         <SelectValue placeholder="Sélectionner le format" />
                     </SelectTrigger>
                     <SelectContent>

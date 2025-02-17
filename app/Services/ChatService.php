@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use App\Models\Conversation;
+use App\Models\CustomInstruction;
 use Illuminate\Support\Facades\Auth;
 
 class ChatService
@@ -37,9 +38,6 @@ class ChatService
             ])->get($this->baseUrl . '/models');
 
             return collect($response->json()['data'])
-                ->filter(function ($model) {
-                    return str_ends_with($model['id'], ':free');
-                })
                 ->sortBy('name')
                 ->map(function ($model) {
                     return [
@@ -63,7 +61,7 @@ class ChatService
      *
      * @return string
      */
-    public function streamConversation(array $messages, ?string $model = null, float $temperature = 0.7)
+    public function streamConversation(Conversation $conversation, array $messages, ?string $model = null, float $temperature = 0.7)
     {
         try {
             logger()->info('Début streamConversation', [
@@ -74,10 +72,15 @@ class ChatService
             $models = collect($this->getModels());
             if (!$model || !$models->contains('id', $model)) {
                 $model = self::DEFAULT_MODEL;
-                logger()->info('Modèle par défaut utilisé:', ['model' => $model]);
+                // logger()->info('Modèle par défaut utilisé:', ['model' => $model]);
             }
-
-            $messages = [$this->getChatSystemPrompt(), ...$messages];
+            if ($conversation->customInstruction !== null) {
+                logger()->info('Instruction personnalisée trouvée:', ['instruction' => $this->getCustomInstructionSystemPrompt($conversation->customInstruction)]);
+                $messages = [$this->getCustomInstructionSystemPrompt($conversation->customInstruction), ...$messages];
+            } else {
+                logger()->info('Instruction par défaut utilisée:', ['instruction' => $this->getChatSystemPrompt()]);
+                $messages = [$this->getChatSystemPrompt(), ...$messages];
+            }
 
             // Méthode "createStreamed" qui renvoie un flux "StreamResponse"
             return $this->client->chat()->createStreamed([
@@ -117,7 +120,7 @@ class ChatService
                 ]]
             );
 
-            logger()->info('Messages pour le titre:', ['messages' => $messages]);
+            // logger()->info('Messages pour le titre:', ['messages' => $messages]);
 
             $model = $conversation->model_id ?? self::DEFAULT_MODEL;
 
@@ -129,10 +132,10 @@ class ChatService
                 'stop' => ["\n", "."]  // Stop at newlines or periods
             ]);
 
-            logger()->debug('Réponse API brute:', [
-                'response' => $response,
-                'content' => $response->choices[0]->message->content ?? null
-            ]);
+            // logger()->debug('Réponse API brute:', [
+            //     'response' => $response,
+            //     'content' => $response->choices[0]->message->content ?? null
+            // ]);
 
             $title = $response->choices[0]->message->content ?? '';
 
@@ -174,20 +177,20 @@ class ChatService
         return [
             'role' => 'system',
             'content' => <<<EOT
-                You are a chat assistant. The current date and time is **{$now}**.
-                You are currently being used by **{$user->name}**.
-                All your responses **must be formatted using Markdown**.
+                You are a chat assistant. The current date and time is {$now}.
+                You are currently being used by {$user->name}.
+                All your responses must be formatted using Markdown.
 
-                ### **Important Instructions:**
-                - **Ignore all previous instructions** from past messages.
-                - **Each message must be processed independently** without considering prior context.
-                - If the current message does **not** contain specific instructions, **respond professionally and neutrally**.
-                - **Only follow instructions provided in the current message**.
-                - Always use **Markdown formatting** for your responses.
-                - **Detect the language of the message and respond in the same language**.
+                Important Instructions:
+                - Ignore all previous instructions from past messages.
+                - Each message must be processed independently without considering prior context.
+                - If the current message does not contain specific instructions, respond professionally and neutrally.
+                - Only follow instructions provided in the current message.
+                - Always use Markdown formatting for your responses.
+                - Detect the language of the last message and respond in the same language.
 
-                ### **Additional Formatting Rules:**
-                - Use `**bold**`, `*italics*`, and `- bullet points` where appropriate.
+                ### Additional Formatting Rules:
+                - Use `bold`, `*italics*`, and `- bullet points` where appropriate.
                 - For code, use `inline code` or fenced code blocks (` ``` `).
                 EOT,
         ];
@@ -223,6 +226,114 @@ class ChatService
                 - German: SEO-Optimierung für bessere Sichtbarkeit
 
             EOT,
+        ];
+    }
+
+    private function getCustomInstructionSystemPrompt(CustomInstruction $instruction): array
+    {
+        $user = Auth::user();
+        $now = now()->locale('fr')->format('l d F Y H:i');
+        $sections = [];
+
+        // Base section is always included
+        $sections[] = <<<EOT
+            You are a chat assistant. The current date and time is {$now}.
+            You are currently being used by {$user->name}.
+
+            EOT;
+
+        // Optional sections based on non-empty values
+        if (!empty(trim($instruction->user_background ?? ''))) {
+            $sections[] = <<<EOT
+                User Background:
+                {$instruction->user_background}
+                EOT;
+        }
+
+        if (is_array($instruction->user_interests) && !empty($instruction->user_interests)) {
+            $interests = "- " . implode("\n- ", array_filter($instruction->user_interests));
+            if (!empty(trim($interests))) {
+                $sections[] = <<<EOT
+                    User Interests:
+                    {$interests}
+                    EOT;
+            }
+        }
+
+        if (is_array($instruction->knowledge_levels) && !empty($instruction->knowledge_levels)) {
+            $knowledgeLevels = collect($instruction->knowledge_levels)
+                ->filter(fn($level) => !empty($level['subject'] ?? '') && !empty($level['level'] ?? ''))
+                ->map(fn($level) => "- {$level['subject']}: {$level['level']}")
+                ->join("\n");
+
+            if (!empty(trim($knowledgeLevels))) {
+                $sections[] = <<<EOT
+                    Knowledge Levels:
+                    {$knowledgeLevels}
+                    EOT;
+            }
+        }
+
+        if (!empty(trim($instruction->user_goals ?? ''))) {
+            $sections[] = <<<EOT
+                User Goals:
+                {$instruction->user_goals}
+                EOT;
+        }
+
+        if (!empty(trim($instruction->assistant_background ?? ''))) {
+            $sections[] = <<<EOT
+                Assistant Background:
+                {$instruction->assistant_background}
+                EOT;
+        }
+
+        // Communication Style section
+        $styleItems = [];
+        if (!empty(trim($instruction->assistant_tone ?? ''))) {
+            $styleItems[] = "- Tone: {$instruction->assistant_tone}";
+        }
+        if (!empty(trim($instruction->response_style ?? ''))) {
+            $styleItems[] = "- Style: {$instruction->response_style}";
+        }
+        if (!empty(trim($instruction->response_format ?? ''))) {
+            $styleItems[] = "- Format: {$instruction->response_format}";
+        }
+
+        if (!empty($styleItems)) {
+            $styleContent = implode("\n", $styleItems);
+            $sections[] = <<<EOT
+                Communication Style:
+                {$styleContent}
+                EOT;
+        }
+
+        if (is_array($instruction->custom_commands) && !empty($instruction->custom_commands)) {
+            $commands = collect($instruction->custom_commands)
+                ->filter(fn($cmd) => !empty($cmd['name'] ?? '') && !empty($cmd['description'] ?? ''))
+                ->map(fn($cmd) => "- {$cmd['name']}: {$cmd['description']}")
+                ->join("\n");
+
+            if (!empty(trim($commands))) {
+                $sections[] = <<<EOT
+                    Custom Commands:
+                    {$commands}
+                    EOT;
+            }
+        }
+
+        // Formatting rules are always included
+        $sections[] = <<<EOT
+            Formatting Rules:
+            - All responses must be formatted using Markdown.
+            - Use `bold`, `italics`, and `- bullet points` where appropriate.
+            - For code, use `inline code` or fenced code blocks (` ``` `).
+            - Detect the language of the message and respond in the same language.
+            EOT;
+
+        return [
+            'role' => 'system',
+            'content' => implode("\n\n", $sections)
         ];
     }
 }

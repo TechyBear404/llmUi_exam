@@ -1,6 +1,6 @@
 <template>
     <AuthenticatedLayout>
-        <ScrollArea class="w-full">
+        <ScrollArea class="w-full p-4">
             <div class="py-12">
                 <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div class="flex items-center justify-between mb-6">
@@ -23,7 +23,9 @@
                     </div>
 
                     <Card v-if="instructions.length === 0" class="mt-4">
-                        <CardContent class="py-8 text-center text-muted">
+                        <CardContent
+                            class="py-8 text-center text-muted-foreground"
+                        >
                             Aucune instruction personnalisée trouvée. Créez
                             votre première !
                         </CardContent>

@@ -107,7 +107,7 @@ watch(
                                     </span>
                                 </template>
 
-                                <template #content>
+                                <template #content class="">
                                     <DropdownLink :href="route('profile.edit')">
                                         Profile
                                     </DropdownLink>

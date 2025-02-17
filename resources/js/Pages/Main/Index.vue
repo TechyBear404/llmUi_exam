@@ -1,40 +1,93 @@
 <template>
     <AuthenticatedLayout>
-        <div class="flex h-[calc(100vh-4rem)] overflow-hidden w-full">
-            <!-- Left Sidebar with Conversations -->
-            <div class="flex flex-col border-r w-80 bg-muted/50">
-                <!-- New Chat Button -->
-                <div class="p-4 border-b">
-                    <Button
-                        @click="createNewConversation"
-                        class="w-full"
-                        variant="default"
-                    >
-                        <font-awesome-icon
-                            icon="fa-solid fa-plus"
-                            class="w-4 h-4 mr-2"
-                        />
-                        <span>New Chat</span>
-                    </Button>
-                </div>
+        <!-- Overlay for mobile -->
+        <div
+            v-if="showConversations"
+            class="fixed inset-0 z-10 bg-black/50 md:hidden"
+            @click="showConversations = false"
+        ></div>
 
-                <!-- Scrollable conversations list -->
-                <div class="flex-1 min-h-0">
-                    <Conversations
-                        :current-conversation="currentConversation"
-                        :conversations="conversations"
-                    />
+        <div class="flex h-[calc(100vh-4rem)] overflow-hidden w-full relative">
+            <!-- Toggle button for mobile -->
+            <Button
+                v-show="showConversations"
+                @click="showConversations = false"
+                class="fixed left-[19.5rem] top-20 z-50 md:hidden shadow-md"
+                size="icon"
+                variant="outline"
+            >
+                <font-awesome-icon icon="fa-solid fa-times" class="w-4 h-4" />
+            </Button>
+
+            <!-- Left Sidebar with Conversations -->
+            <Transition name="slide">
+                <div
+                    v-show="showConversations"
+                    class="absolute z-20 flex-col h-full overflow-hidden transition-all duration-300 ease-in-out border-r md:relative bg-muted"
+                    :class="[
+                        showConversations ? 'left-0 w-80' : '-left-80 w-0',
+                    ]"
+                >
+                    <div class="w-80">
+                        <!-- New Chat Button -->
+                        <div class="p-4 border-b">
+                            <Button
+                                @click="createNewConversation"
+                                class="w-full"
+                                variant="default"
+                            >
+                                <font-awesome-icon
+                                    icon="fa-solid fa-plus"
+                                    class="w-4 h-4 mr-2"
+                                />
+                                <span>Nouvelle conversation</span>
+                            </Button>
+                        </div>
+
+                        <!-- Scrollable conversations list -->
+                        <div class="flex-1 min-h-0">
+                            <Conversations
+                                :current-conversation="currentConversation"
+                                :conversations="conversations"
+                            />
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </Transition>
 
             <!-- Right Side: Model Selector and Chat -->
-            <div class="flex flex-col flex-1 min-w-0">
-                <!-- Model Selector Header -->
-                <div class="p-4 border-b bg-muted/50">
+            <div
+                class="flex flex-col flex-1 w-full min-w-0 transition-all duration-300"
+                :class="{ 'md:ml-0': !showConversations }"
+            >
+                <!-- Model and Instructions Selector Header -->
+                <div
+                    class="flex items-center justify-between gap-4 p-4 border-b bg-muted"
+                >
+                    <!-- Toggle Conversations Button -->
+                    <Button
+                        @click="toggleConversations"
+                        class=""
+                        size="icon"
+                        variant="outline"
+                    >
+                        <font-awesome-icon
+                            :icon="'fa-solid fa-bars'"
+                            class="w-4 h-4 p-2"
+                        />
+                    </Button>
+
                     <ModelsSelector
                         v-model="selectedModel"
                         :models="models"
                         @update:model-value="handleModelChange"
+                        class="flex-1"
+                    />
+                    <CustomInstructionSelector
+                        v-if="currentConversation && customInstructions"
+                        v-model="selectedInstruction"
+                        :instructions="customInstructions"
+                        @update:model-value="handleCustomInstructionChange"
                     />
                 </div>
 
@@ -56,7 +109,8 @@
                                 class="mb-4 text-4xl"
                             />
                             <p class="text-xl">
-                                Select a conversation or start a new one
+                                Sélectionnez une conversation ou commencez-en
+                                une nouvelle
                             </p>
                         </div>
                     </div>
@@ -67,12 +121,13 @@
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, onMounted, onUnmounted } from "vue";
 import { router } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Conversations from "./Partials/Conversations.vue";
 import Chat from "./Partials/Chat.vue";
 import ModelsSelector from "./Partials/ModelsSelector.vue";
+import CustomInstructionSelector from "./Partials/CustomInsctructionSelector.vue";
 import { Button } from "@/Components/ui/button";
 
 const props = defineProps({
@@ -89,10 +144,19 @@ const props = defineProps({
         required: false,
         default: null,
     },
+    customInstructions: {
+        type: Array,
+        required: false,
+        default: null,
+    },
 });
 
 const selectedModel = ref(
     props.currentConversation?.model_id || (props.models[0]?.id ?? null)
+);
+
+const selectedInstruction = ref(
+    props.currentConversation?.custom_instruction_id || null
 );
 
 // Create a deep copy of the conversation to manage locally
@@ -100,6 +164,7 @@ const currentConversation = ref(
     props.currentConversation ? { ...props.currentConversation } : null
 );
 
+console.log(props.currentConversation);
 // Watch for changes in props.currentConversation and update local state
 watch(
     () => props.currentConversation,
@@ -107,31 +172,49 @@ watch(
         if (newConversation) {
             currentConversation.value = { ...newConversation };
             selectedModel.value = newConversation.model_id;
+            selectedInstruction.value = newConversation.custom_instruction_id;
         } else {
             currentConversation.value = null;
+            selectedInstruction.value = null;
         }
     },
     { immediate: true }
 );
 
-const handleModelChange = async (newModel) => {
+const handleModelChange = (newModel) => {
     if (newModel) {
         selectedModel.value = newModel;
+        // find model with id
+        const model = props.models.find((model) => model.id === newModel);
+        console.log(model);
         localStorage.setItem("last_used_model", newModel);
 
         if (props.currentConversation) {
-            await router.put(
+            router.put(
                 route("conversations.update", props.currentConversation.id),
                 {
-                    model_id: newModel,
+                    model: model,
                 }
             );
         } else {
-            await router.put(route("user.updateModel"), {
-                model_id: newModel,
+            router.put(route("user.update-model"), {
+                model: model,
             });
         }
     }
+};
+
+const handleCustomInstructionChange = (instructionId) => {
+    if (!currentConversation.value) return;
+
+    selectedInstruction.value = instructionId;
+    router.put(
+        route("conversations.custom-instruction", currentConversation.value.id),
+        {
+            custom_instruction_id:
+                instructionId === null ? null : instructionId,
+        }
+    );
 };
 
 const createNewConversation = () => {
@@ -141,4 +224,32 @@ const createNewConversation = () => {
         model_id: selectedModel.value,
     });
 };
+
+const showConversations = ref(window.innerWidth >= 768);
+
+const toggleConversations = () => {
+    showConversations.value = !showConversations.value;
+};
+
+// Suppression du gestionnaire de redimensionnement pour garder le contrôle manuel
 </script>
+<style>
+.slide-enter-active,
+.slide-leave-active {
+    transition: all 0.3s ease;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+    transform: translateX(-100%);
+    opacity: 0;
+    width: 0;
+}
+
+.slide-enter-to,
+.slide-leave-from {
+    transform: translateX(0);
+    opacity: 1;
+    width: 20rem;
+}
+</style>
