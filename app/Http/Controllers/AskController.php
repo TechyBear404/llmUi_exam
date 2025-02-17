@@ -17,7 +17,7 @@ class AskController extends Controller
     public function index()
     {
         $this->authorize('viewAny', Conversation::class);
-        
+
         $models = (new ChatService())->getModels();
         $selectedModel = ChatService::DEFAULT_MODEL;
         $conversations = auth()->user()->conversations()
@@ -25,7 +25,7 @@ class AskController extends Controller
             ->latest()
             ->get();
         $customInstructions = auth()->user()->customInstructions()->get();
-        
+
         if (auth()->user()->last_selected_conversation_id) {
             $currentConversation = Conversation::find(auth()->user()->last_selected_conversation_id);
             if ($currentConversation) {
@@ -45,7 +45,7 @@ class AskController extends Controller
     public function streamMessage(Conversation $conversation, Request $request)
     {
         $this->authorize('update', $conversation);
-        
+
         $validated = $request->validate([
             'message' => 'required|string',
             'model'   => 'nullable|string',
@@ -58,7 +58,7 @@ class AskController extends Controller
             ]);
 
             // Save user message first
-            $userMessage = $conversation->messages()->create([
+            $conversation->messages()->create([
                 'content' => $validated['message'],
                 'role'    => 'user',
             ]);
