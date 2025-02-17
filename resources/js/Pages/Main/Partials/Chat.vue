@@ -504,7 +504,7 @@ const sendMessage = async () => {
             route("conversations.ask", props.conversation.id),
             {
                 message: messageContent,
-                model: props.model.id || undefined
+                model: props.model.id || undefined,
             }
         );
 

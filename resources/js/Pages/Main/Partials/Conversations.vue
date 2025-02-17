@@ -1,5 +1,5 @@
 <template>
-    <ScrollArea class="h-full">
+    <ScrollArea class="h-[calc(100vh-4rem)] overflow-y-auto">
         <div v-if="conversations.length === 0" class="py-4 text-center">
             <Card class="mx-4 bg-muted/50">
                 <CardContent class="pt-6">
