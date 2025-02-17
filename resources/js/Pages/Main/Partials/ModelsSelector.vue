@@ -106,15 +106,19 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:modelValue"]);
-const isFreeModelsOnly = ref(false);
-const isImageModelsOnly = ref(false);
+
+// Initialize from localStorage or default to false
+const isFreeModelsOnly = ref(localStorage.getItem('isFreeModelsOnly') === 'true');
+const isImageModelsOnly = ref(localStorage.getItem('isImageModelsOnly') === 'true');
 
 const toggleFreeModels = (value) => {
     isFreeModelsOnly.value = value;
+    localStorage.setItem('isFreeModelsOnly', value);
 };
 
 const toggleImageModels = (value) => {
     isImageModelsOnly.value = value;
+    localStorage.setItem('isImageModelsOnly', value);
 };
 
 const filteredModels = computed(() => {
